@@ -1,0 +1,38 @@
+{% extends 'timetable/base.html' %}
+
+{% block title %}Upload Course Assignments Excel File{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <h2>Upload Course Assignments Excel File</h2>
+
+            {% if errors %}
+                <div class="alert alert-danger">
+                    <ul>
+                        {% for error in errors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endif %}
+
+            {% if success_message %}
+                <div class="alert alert-success">
+                    {{ success_message }}
+                </div>
+            {% endif %}
+
+            <form method="POST" enctype="multipart/form-data" class="p-4 shadow-sm bg-light rounded">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label for="file" class="form-label">Select Excel File:</label>
+                    <input type="file" name="file" class="form-control" accept=".xlsx">
+                </div>
+                <button type="submit" class="btn btn-primary">Upload</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

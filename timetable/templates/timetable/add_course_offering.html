@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <!-- Load static files -->
+    {% load static %}
+    <!-- Include Bootstrap CSS -->
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+    <title>Add Course Offering</title>
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+    
+    <script>
+        $(function() {
+            // Autocomplete for course search
+            $("#course_search").autocomplete({
+                source: function(request, response) {
+                    $.ajax({
+                        url: "{% url 'search_courses' %}",
+                        dataType: "json",
+                        data: {
+                            term: request.term  // The search term entered by the user
+                        },
+                        success: function(data) {
+                            response($.map(data, function(item) {
+                                return {
+                                    label: item.full_name,  // Display the course name
+                                    value: item.id  // Store the course ID internally
+                                };
+                            }));
+                        },
+                        error: function(xhr, status, error) {
+                            console.log("Error: " + error);  // Log any errors for debugging
+                        }
+                    });
+                },
+                select: function(event, ui) {
+                    $("#selected-course-id").val(ui.item.value);  // Store the course ID
+                    $("#course_search").val(ui.item.label);  // Display the course name in the input field
+                    return false;
+                }
+            });
+
+            // Add new department-semester row dynamically
+            $(document).on('click', '#addDepartmentBtn', function() {
+                let container = $('#department_semester_container');
+                let newRow = `<div class="dept_sem_row form-row mb-3">
+                    <div class="form-group col-md-6">
+                        <label for="department">Select Department:</label>
+                        <select name="department" class="department_select form-control">
+                          {% for department in departments %}
+                            <option value="{{ department.id }}">{{ department.name }}</option>
+                          {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="form-group col-md-6">
+                        <label for="semester">Select Semester:</label>
+                        <select name="semester" class="semester_select form-control">
+                          {% for semester in semesters %}
+                            <option value="{{ semester.id }}">{{ semester.name }}</option>
+                          {% endfor %}
+                        </select>
+                    </div>
+                </div>`;
+
+                container.append(newRow);
+            });
+        });
+    </script>
+
+    <style>
+        /* Ensure the footer is pinned to the bottom */
+        .wrapper {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Ensure the footer sticks to the bottom */
+        .footer {
+            margin-top: auto;
+        }
+
+        /* Style form elements */
+        .form-control {
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="wrapper">
+        <!-- Header -->
+        <header class="bg-primary text-white text-center py-3">
+            <h1>University Timetable Management</h1>
+            <div class="container">
+                <nav>
+                    <ul class="nav justify-content-end">
+                        <li class="nav-item"><a class="nav-link text-white" href="{% url 'dashboard' %}">Dashboard</a></li>
+                        <li class="nav-item"><a class="nav-link text-white" href="{% url 'add_data' %}">Add Data</a></li>
+                        <li class="nav-item"><a class="nav-link text-white" href="{% url 'Courses_details' %}">Course Details</a></li>
+                        <li class="nav-item"><a class="nav-link text-white" href="{% url 'teacher_contacts' %}">Teacher Contacts</a></li>
+                        <li class="nav-item"><a class="nav-link text-white" href="{% url 'timetable' %}">Full Timetable</a></li>
+                    </ul>
+                </nav>
+            </div>
+        </header>
+    
+        <main class="container mt-4 flex-fill">
+            <h2 class="mb-4 text-center">Course Offering</h2>
+            
+            <form method="post" id="courseOfferingForm">
+                {% csrf_token %}
+                
+                <!-- Search bar for selecting course -->
+                <div class="form-group">
+                    <label for="course_search">Search Course:</label>
+                    <input type="text" id="course_search" name="course_search" class="form-control" placeholder="Search for course..." autocomplete="off">
+                    <input type="hidden" id="selected-course-id" name="course_id" value=""> <!-- Hidden input for course ID -->
+                </div>
+
+                <!-- Year field (entered once) -->
+                <div class="form-group">
+                    <label for="year">Enter Year:</label>
+                    <input type="number" name="year" id="year" class="form-control" placeholder="e.g., 2024" required>
+                </div>
+                
+                <!-- Department and semester dropdowns -->
+                <div id="department_semester_container">
+                    <div class="dept_sem_row form-row mb-3">
+                        <div class="form-group col-md-6">
+                            <label for="departments">Select Department:</label>
+                            <select name="department" id="departments" class="form-control">
+                                {% for department in departments %}
+                                    <option value="{{ department.id }}">{{ department.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="form-group col-md-6">
+                            <label for="semesters">Select Semester:</label>
+                            <select name="semester" id="semesters" class="form-control">
+                                {% for semester in semesters %}
+                                    <option value="{{ semester.id }}">{{ semester.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Button to add more department-semester rows -->
+                <button type="button" id="addDepartmentBtn" class="btn btn-primary mb-3">Add Department</button>
+                <a href="{% url 'upload_course_offering' %}" class="btn btn-secondary mb-3 ">Upload File</a>
+                <button type="submit" class="btn btn-primary mb-3">Submit</button>
+                
+            </form>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer bg-dark text-white text-center py-2">
+            <p>&copy; 2024 University Timetable System</p>
+        </footer>
+    </div>
+</body>
+</html>

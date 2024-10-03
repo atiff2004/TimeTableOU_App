@@ -1,0 +1,40 @@
+{% extends 'timetable/base.html' %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2 class="text-center mb-4">Select a Class</h2>
+    <div class="row justify-content-center">
+        <div class="col-md-4">
+            <form method="GET" action="" class="p-4 shadow-sm bg-white rounded">
+                <div class="form-group">
+                    <label for="departmentSelect" class="font-weight-bold">Choose a Department:</label>
+                    <select id="departmentSelect" name="department_id" class="form-control" onchange="this.form.submit()">
+                        <option value="">Select Department</option>
+                        {% for department in departments %}
+                            <option value="{{ department.id }}" 
+                                {% if department.id == selected_department_id %}selected{% endif %}>
+                                {{ department.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="classSelect" class="font-weight-bold">Choose a Class:</label>
+                    <select id="classSelect" name="class_id" class="form-control">
+                        <option value="">Select Class</option>
+                        {% for class in classes %}
+                            <option value="{{ class.id }}" 
+                                {% if class.id == selected_class_id %}selected{% endif %}>
+                                {{ class.name }} {{ class.semester.name }}{{ class.section }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-block mt-3">View Timetable</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

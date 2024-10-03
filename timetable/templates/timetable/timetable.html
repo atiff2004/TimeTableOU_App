@@ -1,0 +1,80 @@
+{% extends 'timetable/base.html' %}
+
+{% block content %}
+<h1 class="my-4 text-center">Full Timetable</h1>
+
+<style>
+    .timetable-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 20px;
+    }
+    .timetable-table th, .timetable-table td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: center;
+    }
+
+    /* Black color for the first row with white text */
+    .timetable-table th {
+        background-color: #666666; /* Black background color */
+        color: #ffffff; /* White text color */
+    }
+
+    /* Black color for the first column with white text */
+    .room-cell {
+        font-weight: bold;
+        background-color: #666666; /* Black background color */
+        color: #ffffff; /* White text color */
+    }
+
+    h3.day-bar {
+        background-color: #3c4660; /* Same background as the table headers */
+        color: #ffffff; /* White text */
+        margin-bottom: 0; /* Remove bottom margin to combine with the table */
+        padding: 10px; /* Optional: Add padding for spacing */
+    }
+
+    .schedule-info {
+        margin: 5px 0;
+        padding: 5px;
+        border: 1px solid #ccc;
+        background-color: #f9f9f9;
+    }
+</style>
+
+{% for day in days %}
+    <h3 class="day-bar text-center">{{ day.name }}</h3>
+    <table class="timetable-table">
+        <thead>
+            <tr>
+                <th>Room / Timeslot</th>
+                {% for timeslot in timeslots %}
+                    <th>{{ timeslot.slot }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for room in rooms %}
+                <tr>
+                    <td class="room-cell"><br>{{ room.name }}<br><br></td>
+                    {% for timeslot in timeslots %}
+                        <td>
+                            {% for schedule in schedules %}
+                                {% if schedule.room == room and schedule.timeslot == timeslot and schedule.day == day %}
+                                    <div class="schedule-info">
+                                        <strong>{{ schedule.course_assignment.class_assigned.name }} {{ schedule.course_assignment.class_assigned.semester.name }}{{ schedule.course_assignment.class_assigned.section }}</strong><br>
+                                        {{ schedule.course_assignment.course.short_name }}<br>
+                                        {{ schedule.course_assignment.teacher.name }}
+                                    </div>
+                                {% endif %}
+                            {% endfor %}
+                        </td>
+                    {% endfor %}
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endfor %}
+
+{% endblock %}

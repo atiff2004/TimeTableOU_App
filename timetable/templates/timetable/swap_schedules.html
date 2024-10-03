@@ -1,0 +1,168 @@
+{% extends 'timetable/base.html' %}
+
+{% block content %}
+<h1 class="my-4 text-center">Swap Schedules</h1>
+
+<div class="container">
+    <form method="POST">
+        {% csrf_token %}
+        
+        <!-- First Schedule Selection -->
+        <h3>This Slot</h3>
+        <label for="day_a">Day:</label>
+        <select name="day_a" id="day_a">
+            <option value="">Select Day</option>
+            {% for day in days %}
+                <option value="{{ day.id }}">{{ day.name }}</option>
+            {% endfor %}
+        </select>
+        <br>
+
+        <label for="room_a">Room:</label>
+        <select name="room_a" id="room_a">
+            <option value="">Select Room</option>
+            {% for room in rooms %}
+                <option value="{{ room.id }}">{{ room.name }}</option>
+            {% endfor %}
+        </select>
+        <br>
+
+        <label for="timeslot_a">Timeslot:</label>
+        <select name="timeslot_a" id="timeslot_a">
+            <option value="">Select Timeslot</option>
+            {% for timeslot in timeslots %}
+                <option value="{{ timeslot.id }}">{{ timeslot.slot }}</option>
+            {% endfor %}
+        </select>
+        <br>
+
+        <!-- Second Schedule Selection -->
+        <h3>Swap With</h3>
+        <label for="day_b">Day:</label>
+        <select name="day_b" id="day_b">
+            <option value="">Select Day</option>
+            {% for day in days %}
+                <option value="{{ day.id }}">{{ day.name }}</option>
+            {% endfor %}
+        </select>
+        <br>
+
+        <label for="room_b">Room:</label>
+        <select name="room_b" id="room_b">
+            <option value="">Select Room</option>
+            {% for room in rooms %}
+                <option value="{{ room.id }}">{{ room.name }}</option>
+            {% endfor %}
+        </select>
+        <br>
+
+        <label for="timeslot_b">Timeslot:</label>
+        <select name="timeslot_b" id="timeslot_b">
+            <option value="">Select Timeslot</option>
+            {% for timeslot in timeslots %}
+                <option value="{{ timeslot.id }}">{{ timeslot.slot }}</option>
+            {% endfor %}
+        </select>
+        <br>
+
+        <button type="submit" name="check_schedules" class="btn btn-primary">Check Schedules</button>
+
+        <!-- Display the schedules to be swapped if they exist -->
+        {% if schedule_info_a and schedule_info_b %}
+        <div class="d-flex align-items-center justify-content-center">
+            <h2><br><br>Swap With</h2>
+        </div>
+        <div class="row">
+            <div class="col-md-6">
+              
+                <table class="timetable-table">
+                    <thead>
+                        <tr>
+                            <th>Room</th>
+                            <th>Timeslot</th>
+                            <th>Class</th>
+                            <th>Course</th>
+                            <th>Teacher</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>{{ schedule_info_a.room.name }}</td>
+                            <td>{{ schedule_info_a.timeslot.slot }}</td>
+                            <td>{{ schedule_info_a.course_assignment.class_assigned.name }} {{ schedule_info_a.course_assignment.class_assigned.semester.name }}{{ schedule_info_a.course_assignment.class_assigned.section }}</td>
+                            <td>{{ schedule_info_a.course_assignment.course.short_name }}</td>
+                            <td>{{ schedule_info_a.course_assignment.teacher.name }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="col-md-6">
+                <!-- <h2 class="text-center">with Slot</h2> -->
+                <table class="timetable-table">
+                    <thead>
+                        <tr>
+                            <th>Room</th>
+                            <th>Timeslot</th>
+                            <th>Class</th>
+                            <th>Course</th>
+                            <th>Teacher</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>{{ schedule_info_b.room.name }}</td>
+                            <td>{{ schedule_info_b.timeslot.slot }}</td>
+                            <td>{{ schedule_info_b.course_assignment.class_assigned.name }} {{ schedule_info_b.course_assignment.class_assigned.semester.name }}{{ schedule_info_b.course_assignment.class_assigned.section }}</td>
+                            <td>{{ schedule_info_b.course_assignment.course.short_name }}</td>
+                            <td>{{ schedule_info_b.course_assignment.teacher.name }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="text-center my-4">
+            <form method="POST">
+                {% csrf_token %}
+                <input type="hidden" name="day_a" value="{{ schedule_info_a.day.id }}">
+                <input type="hidden" name="room_a" value="{{ schedule_info_a.room.id }}">
+                <input type="hidden" name="timeslot_a" value="{{ schedule_info_a.timeslot.id }}">
+                <input type="hidden" name="day_b" value="{{ schedule_info_b.day.id }}">
+                <input type="hidden" name="room_b" value="{{ schedule_info_b.room.id }}">
+                <input type="hidden" name="timeslot_b" value="{{ schedule_info_b.timeslot.id }}">
+                
+                <button type="submit" name="confirm_swap" class="btn btn-success">Confirm Swap</button>
+                <button type="button" class="btn btn-secondary" onclick="window.location.reload();">Cancel</button>
+            </form>
+        </div>
+        {% endif %}
+
+        {% if error_message %}
+            <p class="text-danger">{{ error_message }}</p>
+        {% endif %}
+
+        {% if success_message %}
+            <p class="text-success">{{ success_message }}</p>
+        {% endif %}
+    </form>
+</div>
+
+<style>
+    .timetable-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+    }
+    .timetable-table th, .timetable-table td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: center;
+    }
+    .timetable-table th {
+        background-color: #666666;
+        color: #ffffff;
+    }
+</style>
+
+{% endblock %}

@@ -1,0 +1,38 @@
+{% extends 'timetable/base.html' %}
+
+{% block title %}Upload Schedule Excel File{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <h2>Upload Schedule Excel File</h2>
+
+            {% if errors %}
+                <div class="alert alert-danger">
+                    <ul>
+                        {% for err in errors %}
+                            <li>{{ err }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endif %}
+
+            {% if success_message %}
+                <div class="alert alert-success">
+                    <p>{{ success_message }}</p>
+                </div>
+            {% endif %}
+
+            <form method="POST" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label for="file">Upload Excel File</label>
+                    <input type="file" class="form-control" id="file" name="file" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Upload Schedule</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

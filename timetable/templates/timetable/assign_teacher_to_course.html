@@ -1,0 +1,74 @@
+{% extends 'timetable/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container">
+    <h2 class="text-center mb-4">Assign Teacher to Class</h2> <!-- Fixed the heading tag -->
+    <form method="post" class="form-container">
+        {% csrf_token %}
+        
+        <div class="form-row justify-content-center">
+            <div class="form-group col-md-4">
+                <label for="id_department">Select Department:</label>
+                <select id="id_department" name="department" class="form-control" onchange="loadCourseClassPairs()">
+                    <option value="">Select Department</option>
+                    {% for department in form.department.field.queryset %}
+                        <option value="{{ department.id }}">{{ department.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group col-md-4">
+                <label for="id_semester">Select Semester:</label>
+                <select id="id_semester" name="semester" class="form-control" onchange="loadCourseClassPairs()">
+                    <option value="">Select Semester</option>
+                    {% for semester in form.semester.field.queryset %}
+                        <option value="{{ semester.id }}">{{ semester.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group col-md-4">
+                <label for="id_course_assignment">Select Class:</label>
+                <select id="id_course_assignment" name="course_assignment" class="form-control">
+                    <option value="">Select Class</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="id_teacher">Select Teacher:</label>
+            <select id="id_teacher" name="teacher" class="form-control">
+                {% for teacher in form.teacher.field.queryset %}
+                    <option value="{{ teacher.id }}">{{ teacher.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="text-center">
+            <button type="submit" class="btn btn-primary">Assign Teacher</button>
+        </div>
+    </form>
+</div>
+
+<script>
+    function loadCourseClassPairs() {
+        const departmentId = document.getElementById('id_department').value;
+        const semesterId = document.getElementById('id_semester').value;
+        
+        if (departmentId && semesterId) {
+            fetch(`/load_course_class_pairs/?department=${departmentId}&semester=${semesterId}`)
+            .then(response => response.json())
+            .then(data => {
+                const courseAssignmentSelect = document.getElementById('id_course_assignment');
+                courseAssignmentSelect.innerHTML = '<option value="">Select Class</option>';
+                data.course_assignments.forEach(pair => {
+                    courseAssignmentSelect.innerHTML += `
+                        <option value="${pair.id}">${pair.class_info} - ${pair.course__short_name}</option>
+                    `;
+                });
+            });
+        }
+    }
+</script>
+{% endblock %}

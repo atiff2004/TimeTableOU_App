@@ -1,0 +1,29 @@
+{% extends 'timetable/base.html' %}
+
+{% block content %}
+<h1>Confirm Schedule Swap</h1>
+
+    <h3>Schedule A (Before Swap):</h3>
+    <p>Day: {{ schedule_a.day }}</p>
+    <p>Room: {{ schedule_a.room }}</p>
+    <p>Timeslot: {{ schedule_a.timeslot }}</p>
+
+    <h3>Schedule B (Before Swap):</h3>
+    <p>Day: {{ schedule_b.day }}</p>
+    <p>Room: {{ schedule_b.room }}</p>
+    <p>Timeslot: {{ schedule_b.timeslot }}</p>
+
+    <form method="POST">
+        {% csrf_token %}
+        <input type="hidden" name="day_a" value="{{ day_a }}">
+        <input type="hidden" name="room_a" value="{{ room_a }}">
+        <input type="hidden" name="timeslot_a" value="{{ timeslot_a }}">
+        <input type="hidden" name="day_b" value="{{ day_b }}">
+        <input type="hidden" name="room_b" value="{{ room_b }}">
+        <input type="hidden" name="timeslot_b" value="{{ timeslot_b }}">
+
+        <button type="submit" name="confirm">Confirm Swap</button>
+    </form>
+
+    <a href="{% url 'timetable' %}">Cancel</a>
+{% endblock %}

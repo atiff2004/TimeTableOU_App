@@ -1,0 +1,89 @@
+{% extends 'timetable/base.html' %}
+{% load static %}
+
+{% block content %}
+<h2 class='text-center'>Assign Courses to Class</h2>
+<form method="post" class="form-container">
+    {% csrf_token %}
+
+    <div class="form-row">
+        <div class="form-group col-md-4">
+            <label for="id_department">Select Department:</label>
+            <select id="id_department" name="department" class="form-control" onchange="loadClassesAndCourses()">
+                <option value="">Select Department</option>
+                {% for department in form.department.field.queryset %}
+                    <option value="{{ department.id }}">{{ department.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-group col-md-4">
+            <label for="id_semester">Select Semester:</label>
+            <select id="id_semester" name="semester" class="form-control" onchange="loadClassesAndCourses()">
+                <option value="">Select Semester</option>
+                {% for semester in form.semester.field.queryset %}
+                    <option value="{{ semester.id }}">{{ semester.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-group col-md-4">
+            <label for="id_class_assigned">Select Class:</label>
+            <select id="id_class_assigned" name="class_assigned" class="form-control">
+                <option value="">Select Class</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label for="id_courses">Select Courses:</label>
+        <div id="courses-container">
+            <!-- Courses will be dynamically inserted here -->
+        </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Assign Courses</button>
+    <a href="{% url 'upload_course_assignments' %}" class="btn btn-secondary">Upload File</a>
+</form>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<script>
+    $(document).ready(function() {
+        $('#id_department, #id_semester').change(function() {
+            loadClassesAndCourses();
+        });
+
+        function loadClassesAndCourses() {
+            const departmentId = document.getElementById('id_department').value;
+            const semesterId = document.getElementById('id_semester').value;
+            
+            if (departmentId && semesterId) {
+                fetch(`/load_classes_and_courses/?department=${departmentId}&semester=${semesterId}`)
+                .then(response => response.json())
+                .then(data => {
+                    // Populate classes dropdown
+                    const classSelect = document.getElementById('id_class_assigned');
+                    classSelect.innerHTML = '<option value="">Select Class</option>';
+                    data.classes.forEach(cls => {
+                        classSelect.innerHTML += `<option value="${cls.id}">${cls.class_info}</option>`;
+                    });
+        
+                    // Populate courses checkboxes
+                    const coursesContainer = document.getElementById('courses-container');
+                    coursesContainer.innerHTML = '';
+                    data.courses.forEach(course => {
+                        coursesContainer.innerHTML += `
+                            <div class="form-check">
+                                <input type="checkbox" name="courses" value="${course.id}" class="form-check-input">
+                                <label class="form-check-label">${course.full_name}</label>
+                            </div>
+                        `;
+                    });
+                });
+            }
+        }
+    });
+</script>
+
+{% endblock %}

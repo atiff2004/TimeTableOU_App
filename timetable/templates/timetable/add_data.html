@@ -1,0 +1,19 @@
+{% extends "timetable/base.html" %}
+{% load static %}
+{% block content %}
+<div class="container mt-5">
+    <h2 class="my-4 text-center">Add Data to Timetable</h2>
+        <div class="mt-4 text-center">
+            <a href="{% url 'add_course' %}" class="btn btn-primary mb-2">Add Course</a>
+            <a href="{% url 'add_class' %}" class="btn btn-secondary mb-2">Add Class</a>
+            <a href="{% url 'add_teacher' %}" class="btn btn-info mb-2">Add Teacher</a>
+            <a href="{% url 'assign_course_to_class' %}" class="btn btn-info mb-2">Assign Course</a>
+        </div>
+
+        <div class="mt-4 text-center">    
+            <a href="{% url 'add_day' %}" class="btn btn-secondary mb-2">Add Day</a>
+            <a href="{% url 'add_Timeslot' %}" class="btn btn-info mb-2">Add Timeslot</a>
+            <a href="{% url 'add_Room' %}" class="btn btn-primary mb-2">Add Room</a>
+        </div>
+</div>
+{% endblock %}

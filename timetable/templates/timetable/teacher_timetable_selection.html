@@ -1,0 +1,22 @@
+{% extends 'timetable/base.html' %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2 class="text-center mb-4">Select Teacher</h2>
+    <div class="row justify-content-center">
+        <div class="col-md-4">
+            <form method="GET" action="" class="p-4 shadow-sm bg-white rounded">
+                <div class="form-group">
+                    <label for="teacherSelect" class="font-weight-bold">Choose a Teacher:</label>
+                    <select id="teacherSelect" name="teacher_id" class="form-control">
+                        {% for teacher in teachers %}
+                            <option value="{{ teacher.id }}">{{ teacher.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary btn-block mt-3">View Timetable</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

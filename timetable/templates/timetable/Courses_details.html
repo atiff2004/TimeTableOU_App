@@ -1,0 +1,59 @@
+{% extends 'timetable/base.html' %}
+
+{% block content %}
+<h1 class="my-4 text-center">Courses Details</h1>
+
+<style>
+    .timetable-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 20px;
+    }
+    .timetable-table th, .timetable-table td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: center;
+    }
+
+    /* Black color for the first row with white text */
+    .timetable-table th {
+        background-color: #666666; /* Black background color */
+        color: #ffffff; /* White text color */
+    }
+
+    /* Black color for the first column with white text */
+    .room-cell {
+        font-weight: bold;
+        background-color: #666666; /* Black background color */
+        color: #ffffff; /* White text color */
+    }
+
+    .schedule-info {
+        margin: 5px 0;
+        padding: 5px;
+        border: 1px solid #ccc;
+        background-color: #f9f9f9;
+    }
+</style>
+
+<table class="timetable-table">
+    <thead>
+        <tr>
+            <th>Course Code</th>
+            <th>Course's Full Name</th>
+            <th>Course Abrivation</th>
+            <th>Credict Hours</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for course in Courses %}
+            <tr>
+                <td class="schedule-info">{{ course.course_code }}</td>
+                <td class="schedule-info">{{ course.full_name }}</td>
+                <td class="schedule-info">{{ course.short_name }}</td>
+                <td class="schedule-info">{{ course.credit_hours }}-{{ course.lab_crh}}</td>
+            </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

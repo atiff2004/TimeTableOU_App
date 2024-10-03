@@ -1,0 +1,79 @@
+{% extends 'timetable/base.html' %}
+
+{% block content %}
+<h3 class="day-bar text-center">{{ selected_class.name }} {{ selected_class.semester.name }}{{ selected_class.section }}</h3>
+
+<style>
+    .timetable-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 20px;
+    }
+    .timetable-table th, .timetable-table td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: center;
+    }
+
+    h3.day-bar {
+        background-color: #3c4660; /* Same background as the table headers */
+        color: #ffffff; /* White text */
+        margin-bottom: 0; /* Remove bottom margin to combine with the table */
+        padding: 10px; /* Optional: Add padding for spacing */
+    }
+
+    /* Black color for the first row with white text */
+    .timetable-table th {
+        background-color: #666666; /* Black background color */
+        color: #ffffff; /* White text color */
+    }
+
+    /* Black color for the first column with white text */
+    .room-cell {
+        font-weight: bold;
+        background-color: #666666; /* Black background color */
+        color: #ffffff; /* White text color */
+    }
+
+    .schedule-info {
+        margin: 5px 0;
+        padding: 5px;
+        border: 1px solid #ccc;
+        background-color: #f9f9f9;
+    }
+</style>
+
+<table class="timetable-table">
+    <thead>
+        <tr>
+            <th>Days / Timeslots</th>
+            {% for timeslot in timeslots %}
+                <th>{{ timeslot.slot }}</th>
+            {% endfor %}
+        </tr>
+    </thead>
+    <tbody>
+        {% for day_row in timetable_data %}
+        <tr>
+            <td class="room-cell"><br>{{ day_row.day }}<br><br></td>
+            {% for slot in day_row.slots %}
+                <td>
+                    {% if slot %}
+                        {% for entry in slot %}
+                            <div class="schedule-info">
+                                <strong>{{ entry.room_name }}</strong><br>
+                                {{ entry.course_name }} <br>
+                                {{ entry.teacher_name }}
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        -
+                    {% endif %}
+                </td>
+            {% endfor %}
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% endblock %}
