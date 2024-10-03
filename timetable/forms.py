@@ -1,7 +1,15 @@
 from django import forms
-from .models import Course, Class, CourseOffering, Teacher, Room, Timeslot, Day, Schedule, CourseAssignment, Department, Semester
+from .models import Course,Shift,Class, CourseOffering, Teacher, Room, Timeslot, Day, Schedule, CourseAssignment, Department, Semester
 from django_select2.forms import ModelSelect2Widget
+from .models import Shift
 
+class AddShiftForm(forms.ModelForm):
+    class Meta:
+        model = Shift
+        fields = ['name']  # Ensure 'name' is the field representing the shift
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g. M'}),
+        }
 class addday(forms.ModelForm):
     class Meta:
         model = Day
@@ -18,13 +26,17 @@ class addroom(forms.ModelForm):
             'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g: ABIII-G01'})
         }
 
+
+
 class addslot(forms.ModelForm):
     class Meta:
         model = Timeslot
-        fields = ['slot']
-        widgets = {
-            'slot': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g: 08:30-10:00' })
-        }
+        fields = ['slot', 'shift']  # Ensure 'shift' is included
+
+    def __init__(self, *args, **kwargs):
+        super(addslot, self).__init__(*args, **kwargs)  # Corrected the call here
+        self.fields['shift'].queryset = Shift.objects.all()  # Ensure shifts are populated
+        self.fields['slot'].widget = forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g: 08:30-10:00'})  # Use the desired attributes for the slot field
 
 class DepartmentForm(forms.ModelForm):
     class Meta:

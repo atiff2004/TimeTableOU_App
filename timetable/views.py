@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from .forms import CourseForm, ClassForm, ScheduleForm, CourseOfferingForm, TeacherForm, addday, addroom, addslot, CourseAssignmentForm, DepartmentForm, TeacherAssignmentForm
+from .forms import CourseForm, ClassForm, AddShiftForm, ScheduleForm, CourseOfferingForm, TeacherForm, addday, addroom, addslot, CourseAssignmentForm, DepartmentForm, TeacherAssignmentForm
 from .models import Room, Timeslot,Shift, Day, Schedule, Class, Teacher, Course, CourseAssignment, Department,  CourseOffering, Semester
 from django.http import JsonResponse, HttpResponse
 import openpyxl
@@ -1285,3 +1285,171 @@ def upload_schedule(request):
 
     # Render the upload page with any errors
     return render(request, 'timetable/upload_schedule.html', {'errors': errors})
+
+def upload_days_rooms_timeslots(request):
+    errors = []  # List to collect error messages
+
+    if request.method == 'POST' and request.FILES.get('file'):
+        excel_file = request.FILES['file']
+
+        try:
+            df = pd.read_excel(excel_file)
+        except Exception as e:
+            errors.append(f"Invalid Excel file format: {e}")
+            return render(request, 'timetable/upload_days_rooms_timeslots.html', {'errors': errors})
+
+        for index, row in df.iterrows():
+            room_name = row.get('Room')
+            day_name = row.get('Day')
+            timeslot_slot = row.get('Timeslot')
+            shift_name = row.get('Shift')  # Change variable to shift_name
+
+            # Skip rows with missing required fields
+            if pd.isna(room_name) or pd.isna(day_name) or pd.isna(timeslot_slot) or pd.isna(shift_name):
+                errors.append(f"Row {index + 1}: Missing required fields.")
+                continue
+
+            # Trim and clean data
+            room_name = str(room_name).strip()
+            day_name = str(day_name).strip()
+            timeslot_slot = str(timeslot_slot).strip()
+            shift_name = str(shift_name).strip()
+
+            # Handle Shift
+            if not Shift.objects.filter(name__iexact=shift_name).exists():
+                Shift.objects.create(name=shift_name)
+            else:
+                pass
+
+            # Handle Room
+            if not Room.objects.filter(name__iexact=room_name).exists():
+                Room.objects.create(name=room_name)
+            else:
+                errors.append(f"Row {index + 1}: Room '{room_name}' already exists.")
+
+            # Handle Day
+            if not Day.objects.filter(name__iexact=day_name).exists():
+                Day.objects.create(name=day_name)
+            else:
+                errors.append(f"Row {index + 1}: Day '{day_name}' already exists.")
+
+            # Handle Timeslot
+            if not Timeslot.objects.filter(slot__iexact=timeslot_slot, shift__name__iexact=shift_name).exists():
+                # Get the Shift object
+                try:
+                    shift_obj = Shift.objects.get(name__iexact=shift_name)
+                    Timeslot.objects.create(slot=timeslot_slot, shift=shift_obj)
+                except Shift.DoesNotExist:
+                    pass
+            else:
+                errors.append(f"Row {index + 1}: Timeslot '{timeslot_slot}' with shift '{shift_name}' already exists.")
+
+    # Render the upload page with any errors
+    return render(request, 'timetable/upload_days_rooms_timeslots.html', {'errors': errors})
+
+
+
+def manage_days_rooms_timeslots(request):
+    # Ensure default shifts exist
+    default_shifts = ['M', 'E']
+    for shift_name in default_shifts:
+        Shift.objects.get_or_create(name=shift_name)
+    
+    if request.method == 'POST':
+        item_type = request.POST.get('item_type')
+
+        if item_type == 'bulk_delete':
+            # Handle bulk delete
+            room_ids = request.POST.get('room_ids').split(',') if request.POST.get('room_ids') else []
+            day_ids = request.POST.get('day_ids').split(',') if request.POST.get('day_ids') else []
+            timeslot_ids = request.POST.get('timeslot_ids').split(',') if request.POST.get('timeslot_ids') else []
+            shift_ids = request.POST.get('shift_ids').split(',') if request.POST.get('shift_ids') else []
+
+            Room.objects.filter(id__in=room_ids).delete()
+            Day.objects.filter(id__in=day_ids).delete()
+            Timeslot.objects.filter(id__in=timeslot_ids).delete()
+            Shift.objects.filter(id__in=shift_ids).delete()
+            return redirect('manage_data')
+
+        elif item_type == 'add_room':
+            form = addroom(request.POST)
+            if form.is_valid():
+                # Prevent duplicates
+                if not Room.objects.filter(name=form.cleaned_data['name']).exists():
+                    form.save()
+                return redirect('manage_data')
+
+        elif item_type == 'add_day':
+            if Day.objects.count() >= 5:
+                error_message = "You can't add more than 5 days."
+                return render(request, 'timetable/manage_days_rooms_timeslots.html', {'error_message': error_message})
+
+            form = addday(request.POST)
+            if form.is_valid():
+                # Prevent duplicates
+                if not Day.objects.filter(name=form.cleaned_data['name']).exists():
+                    form.save()
+                return redirect('manage_data')
+
+        elif item_type == 'add_timeslot':
+            form = addslot(request.POST)
+            if form.is_valid():
+                # Prevent duplicates
+                if not Timeslot.objects.filter(slot=form.cleaned_data['slot'], shift=form.cleaned_data['shift']).exists():
+                    form.save()
+                return redirect('manage_data')
+
+        elif item_type == 'add_shift':
+            shift_form = AddShiftForm(request.POST)
+            if shift_form.is_valid():
+                # Prevent duplicate shifts
+                if not Shift.objects.filter(name=shift_form.cleaned_data['name']).exists():
+                    shift_form.save()
+                return redirect('manage_data')
+
+    else:
+        # Initialize forms for adding
+        room_form = addroom()
+        day_form = addday()
+        timeslot_form = addslot()
+        shift_form = AddShiftForm()
+
+    rooms = Room.objects.all()
+    days = Day.objects.all()
+    timeslots = Timeslot.objects.all()
+    shifts = Shift.objects.all()
+
+    return render(request, 'timetable/manage_days_rooms_timeslots.html', {
+        'rooms': rooms,
+        'days': days,
+        'timeslots': timeslots,
+        'shifts': shifts,
+        'room_form': room_form,
+        'day_form': day_form,
+        'timeslot_form': timeslot_form,
+        'shift_form': shift_form,
+    })
+
+def delete_data(request):
+    if request.method == 'POST':
+        # Handle the deletion of Room, Day, or Timeslot
+        item_type = request.POST.get('item_type')
+        item_id = request.POST.get('item_id')
+
+        if item_type == 'room':
+            Room.objects.filter(id=item_id).delete()
+        elif item_type == 'day':
+            Day.objects.filter(id=item_id).delete()
+        elif item_type == 'timeslot':
+            Timeslot.objects.filter(id=item_id).delete()
+
+    # Retrieve all data to display
+    rooms = Room.objects.all()
+    days = Day.objects.all()
+    timeslots = Timeslot.objects.all()
+
+    return render(request, 'timetable/delete_data.html', {
+        'rooms': rooms,
+        'days': days,
+        'timeslots': timeslots,
+    })

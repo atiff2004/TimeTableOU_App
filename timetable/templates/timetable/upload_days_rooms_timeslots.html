@@ -1,0 +1,33 @@
+<!-- templates/timetable/upload_days_rooms_timeslots.html -->
+{% extends 'timetable/base.html' %}
+
+{% block title %}Upload Days, Rooms, and Timeslots{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <h2>Upload Days, Rooms, and Timeslots</h2>
+
+            {% if errors %}
+                <div class="alert alert-danger">
+                    <ul>
+                        {% for err in errors %}
+                            <li>{{ err }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endif %}
+
+            <form method="POST" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label for="file">Upload Excel File</label>
+                    <input type="file" class="form-control" id="file" name="file" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Upload</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

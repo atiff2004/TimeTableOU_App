@@ -9,6 +9,11 @@ urlpatterns = [
     path('upload_course_offering/', views.upload_course_offerings, name='upload_course_offering'),
     path('upload_schedule/', views.upload_schedule, name='upload_schedule'),
     path('upload_course_assignments/', views.upload_course_assignments_excel, name='upload_course_assignments'),
+    path('upload-days-rooms-timeslots/', views.upload_days_rooms_timeslots, name='upload_days_rooms_timeslots'),
+
+    # URL for deleting Days, Rooms, and Timeslots
+    path('delete_data/', views.delete_data, name='delete_data'),
+    path('manage_data/', views.manage_days_rooms_timeslots, name='manage_data'),
     path('add_data/', views.add_data, name='add_data'),
     path('timetable/', views.timetable_view, name='timetable'),
     path('Room/timetable/', views.room_timetable_selection_view, name='room_timetable_selection_view'),

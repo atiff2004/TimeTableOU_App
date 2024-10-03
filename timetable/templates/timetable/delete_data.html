@@ -1,0 +1,129 @@
+{% extends 'timetable/base.html' %}
+
+{% block title %}Delete Days, Rooms, or Timeslots{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2 class="mb-4">Delete Days, Rooms, or Timeslots</h2>
+
+    <div class="row">
+        <div class="col-md-4">
+            <h4>Rooms</h4>
+            <table class="table table-bordered table-striped">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Select</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for room in rooms %}
+                    <tr>
+                        <td>{{ room.name }}</td>
+                        <td>
+                            <input type="checkbox" name="room_ids" value="{{ room.id }}">
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="col-md-4">
+            <h4>Days</h4>
+            <table class="table table-bordered table-striped">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Select</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for day in days %}
+                    <tr>
+                        <td>{{ day.name }}</td>
+                        <td>
+                            <input type="checkbox" name="day_ids" value="{{ day.id }}">
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="col-md-4">
+            <h4>Timeslots</h4>
+            <table class="table table-bordered table-striped">
+                <thead>
+                    <tr>
+                        <th>Slot</th>
+                        <th>Select</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for timeslot in timeslots %}
+                    <tr>
+                        <td>{{ timeslot.slot }}</td>
+                        <td>
+                            <input type="checkbox" name="timeslot_ids" value="{{ timeslot.id }}">
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="mt-4">
+        <button type="button" class="btn btn-danger" data-toggle="modal" data-target="#confirmDeleteModal">Delete Selected</button>
+    </div>
+</div>
+
+<!-- Confirmation Modal -->
+<div class="modal fade" id="confirmDeleteModal" tabindex="-1" role="dialog" aria-labelledby="confirmDeleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="confirmDeleteModalLabel">Confirm Deletion</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                Are you sure you want to delete the selected items?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteButton">Delete</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.getElementById('confirmDeleteButton').addEventListener('click', function () {
+        const form = document.getElementById("deleteForm");
+        // Gather selected IDs
+        const roomIds = Array.from(document.querySelectorAll('input[name="room_ids"]:checked')).map(el => el.value);
+        const dayIds = Array.from(document.querySelectorAll('input[name="day_ids"]:checked')).map(el => el.value);
+        const timeslotIds = Array.from(document.querySelectorAll('input[name="timeslot_ids"]:checked')).map(el => el.value);
+
+        // Set the selected IDs in the hidden form inputs
+        document.getElementById("room_ids").value = roomIds.join(',');
+        document.getElementById("day_ids").value = dayIds.join(',');
+        document.getElementById("timeslot_ids").value = timeslotIds.join(',');
+
+        // Submit the form
+        form.submit();
+    });
+</script>
+
+<form id="deleteForm" method="POST" style="display:none;">
+    {% csrf_token %}
+    <input type="hidden" name="item_type" value="bulk_delete">
+    <input type="hidden" name="room_ids" id="room_ids">
+    <input type="hidden" name="day_ids" id="day_ids">
+    <input type="hidden" name="timeslot_ids" id="timeslot_ids">
+</form>
+
+{% endblock %}
