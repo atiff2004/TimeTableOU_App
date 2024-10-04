@@ -12,7 +12,6 @@ urlpatterns = [
     path('upload-days-rooms-timeslots/', views.upload_days_rooms_timeslots, name='upload_days_rooms_timeslots'),
 
     # URL for deleting Days, Rooms, and Timeslots
-    path('delete_data/', views.delete_data, name='delete_data'),
     path('manage_data/', views.manage_days_rooms_timeslots, name='manage_data'),
     path('add_data/', views.add_data, name='add_data'),
     path('timetable/', views.timetable_view, name='timetable'),
@@ -24,11 +23,8 @@ urlpatterns = [
     path('teacher/timetable/<int:teacher_id>/', views.teacher_timetable_view, name='teacher_timetable'),
     path('add_course/', views.add_course, name='add_course'),
     path('add_class/', views.add_class, name='add_class'),
-    path('add_Room/', views.add_Room, name='add_Room'),
     path('teacher_contacts', views.teacher_contacts, name='teacher_contacts'),
     path('Courses_details', views.Courses_details, name='Courses_details'),
-    path('add_day/', views.add_day, name='add_day'),
-    path('add_Timeslot/', views.add_Timeslot, name='add_Timeslot'),
     path('add_teacher/', views.add_teacher, name='add_teacher'),
     path('assign-schedule/', views.assign_schedule, name='assign_schedule'),
     # path('load-classes/', views.load_classes_by_department_and_semester, name='load_classes_by_department_and_semester'),

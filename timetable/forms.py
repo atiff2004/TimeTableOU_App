@@ -31,12 +31,27 @@ class addroom(forms.ModelForm):
 class addslot(forms.ModelForm):
     class Meta:
         model = Timeslot
-        fields = ['slot', 'shift']  # Ensure 'shift' is included
+        fields = ['slot', 'shift']
 
     def __init__(self, *args, **kwargs):
-        super(addslot, self).__init__(*args, **kwargs)  # Corrected the call here
-        self.fields['shift'].queryset = Shift.objects.all()  # Ensure shifts are populated
-        self.fields['slot'].widget = forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g: 08:30-10:00'})  # Use the desired attributes for the slot field
+        super(addslot, self).__init__(*args, **kwargs)
+
+        # Fetch shifts and modify their display values
+        self.fields['shift'].queryset = Shift.objects.all()
+        self.fields['shift'].label_from_instance = lambda obj: 'Morning' if obj.name == 'M' else 'Evening' if obj.name == 'E' else obj.name
+
+        # Set default value to "Morning" by default (Shift 'M')
+        try:
+            self.fields['shift'].initial = Shift.objects.get(name='M').id  # Assuming 'M' is in the database
+        except Shift.DoesNotExist:
+            pass
+
+        # Remove the '-------' option by making the field required and removing the empty label
+        self.fields['shift'].empty_label = None  # This removes the '-------' line
+
+        # Slot field customization
+        self.fields['slot'].widget = forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g: 08:30-10:00'})
+
 
 class DepartmentForm(forms.ModelForm):
     class Meta:

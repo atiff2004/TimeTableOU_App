@@ -4,8 +4,15 @@
 
 {% block content %}
 <div class="container mt-5">
-    <h2 class="mb-4">Manage Days, Rooms, Timeslots, and Shifts</h2>
-
+    {% if errors %}
+                <div class="alert alert-danger">
+                    <ul>
+                        {% for err in errors %}
+                            <li>{{ err }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endif %}
     <div class="row">
         <!-- Room Table -->
         <div class="col-md-3">
@@ -26,37 +33,6 @@
                     {% endfor %}
                 </tbody>
             </table>
-            <form method="POST" action="">
-                {% csrf_token %}
-                {{ room_form.as_p }}
-                <button type="submit" name="item_type" value="add_room" class="btn btn-primary">Add Room</button>
-            </form>
-        </div>
-
-        <!-- Day Table -->
-        <div class="col-md-3">
-            <h4>Days</h4>
-            <table class="table table-bordered table-striped">
-                <thead>
-                    <tr>
-                        <th>Name</th>
-                        <th>Select</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for day in days %}
-                    <tr>
-                        <td>{{ day.name }}</td>
-                        <td><input type="checkbox" name="day_ids" value="{{ day.id }}"></td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-            <form method="POST" action="">
-                {% csrf_token %}
-                {{ day_form.as_p }}
-                <button type="submit" name="item_type" value="add_day" class="btn btn-primary">Add Day</button>
-            </form>
         </div>
 
         <!-- Timeslot Table -->
@@ -80,13 +56,31 @@
                     {% endfor %}
                 </tbody>
             </table>
-            <form method="POST" action="">
-                {% csrf_token %}
-                {{ timeslot_form.as_p }}
-                <button type="submit" name="item_type" value="add_timeslot" class="btn btn-primary">Add Timeslot</button>
-            </form>
         </div>
 
+
+        <!-- Day Table -->
+        <div class="col-md-3">
+            <h4>Days</h4>
+            <table class="table table-bordered table-striped">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Select</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for day in days %}
+                    <tr>
+                        <td>{{ day.name }}</td>
+                        <td><input type="checkbox" name="day_ids" value="{{ day.id }}"></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        
         <!-- Shift Table -->
         <div class="col-md-3">
             <h4>Shifts</h4>
@@ -106,20 +100,76 @@
                     {% endfor %}
                 </tbody>
             </table>
+        </div>
+    </div>
+
+    <!-- Combined Input Fields with Separate Forms in Two Rows -->
+    
+    <div class="row mt-4">
+        <!-- First Row: Room and Day Forms -->
+        <div class="col-md-6">
             <form method="POST" action="">
                 {% csrf_token %}
-                {{ shift_form.as_p }}
-                <button type="submit" name="item_type" value="add_shift" class="btn btn-primary">Add Shift</button>
+                <div class="input-group mb-3">
+                    {{ room_form.name }}
+                    <div class="input-group-append">
+                        <button type="submit" name="item_type" value="add_room" class="btn btn-primary">Add Room</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <div class="col-md-6">
+            <form method="POST" action="">
+                {% csrf_token %}
+                <div class="input-group mb-3">
+                    {{ day_form.name }}
+                    <div class="input-group-append">
+                        <button type="submit" name="item_type" value="add_day" class="btn btn-primary">Add Day</button>
+                    </div>
+                </div>
             </form>
         </div>
     </div>
 
- 
+    <div class="row mt-2">
+        <!-- Second Row: Timeslot and Shift Forms -->
+        <div class="col-md-6">
+            <form method="POST" action="">
+                {% csrf_token %}
+                <div class="input-group mb-3">
+                    {{ timeslot_form.slot }}
+                    {{ timeslot_form.shift }}
+                    <div class="input-group-append">
+                        <button type="submit" name="item_type" value="add_timeslot" class="btn btn-primary">Add TimeSlot</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <div class="col-md-6">
+            <form method="POST" action="">
+                {% csrf_token %}
+                <div class="input-group mb-3">
+                    {{ shift_form.name }}
+                    <div class="input-group-append">
+                        <button type="submit" name="item_type" value="add_shift" class="btn btn-primary">Add Shift</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <!-- Delete Button Centered -->
     <div class="mt-4 text-center">
-        <button type="button" class="btn btn-danger" data-toggle="modal" data-target="#confirmDeleteModal">Delete Selected</button>
+        <!-- Delete Button -->
+        <button type="button" class="btn btn-danger mb-2" data-toggle="modal" data-target="#confirmDeleteModal">Delete Selected</button>
+
+        <!-- Upload Button -->
+        <a href="{% url 'upload_days_rooms_timeslots' %}" class="btn btn-secondary mb-2">Upload Data</a>
+            
     </div>
+
 </div>
 
 <!-- Confirmation Modal -->

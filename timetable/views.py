@@ -436,45 +436,6 @@ def dashboard_view(request):
 def add_data(request):
     return render(request, 'timetable/add_data.html')
 
-def add_Timeslot(request):
-    if request.method == 'POST':
-        form = addslot(request.POST)
-        if form.is_valid():
-            form.save()
-            # Success message after creation
-            return render(request, 'timetable/add_Timeslot.html', {
-            'success_message': f"Successfully Added TimeSlot." })
-    else:
-        form = addslot()
-
-    return render(request, 'timetable/add_Timeslot.html', {'form': form})
-
-def add_Room(request):
-    if request.method == 'POST':
-        form = addroom(request.POST)
-        if form.is_valid():
-            form.save()
-            return render(request, 'timetable/add_Room.html', {
-            'success_message': f"Successfully Added Room." })
-    else:
-        form = addroom()
-
-    return render(request, 'timetable/add_Room.html', {'form': form})
-def add_day(request):
-    # Check if there are already 5 days added
-    if Day.objects.count() >= 5:
-        error_message = "You can't add more than 5 days."
-        return render(request, 'timetable/add_day.html', {'error_message': error_message})
-
-    if request.method == 'POST':
-        form = addday(request.POST)
-        if form.is_valid():
-            form.save()
-            return redirect('dashboard')
-    else:
-        form = addday()
-
-    return render(request, 'timetable/add_day.html', {'form': form})
 def full_timetable(request):
     days = Day.objects.all()
     timeslots = Timeslot.objects.all()
@@ -1343,7 +1304,6 @@ def upload_days_rooms_timeslots(request):
                     pass
             else:
                 errors.append(f"Row {index + 1}: Timeslot '{timeslot_slot}' with shift '{shift_name}' already exists.")
-
     # Render the upload page with any errors
     return render(request, 'timetable/upload_days_rooms_timeslots.html', {'errors': errors})
 
@@ -1430,26 +1390,3 @@ def manage_days_rooms_timeslots(request):
         'shift_form': shift_form,
     })
 
-def delete_data(request):
-    if request.method == 'POST':
-        # Handle the deletion of Room, Day, or Timeslot
-        item_type = request.POST.get('item_type')
-        item_id = request.POST.get('item_id')
-
-        if item_type == 'room':
-            Room.objects.filter(id=item_id).delete()
-        elif item_type == 'day':
-            Day.objects.filter(id=item_id).delete()
-        elif item_type == 'timeslot':
-            Timeslot.objects.filter(id=item_id).delete()
-
-    # Retrieve all data to display
-    rooms = Room.objects.all()
-    days = Day.objects.all()
-    timeslots = Timeslot.objects.all()
-
-    return render(request, 'timetable/delete_data.html', {
-        'rooms': rooms,
-        'days': days,
-        'timeslots': timeslots,
-    })
