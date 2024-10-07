@@ -1,0 +1,28 @@
+<!-- templates/timetable/result.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generated Timetable</title>
+</head>
+<body>
+    <h1>Generated Timetable</h1>
+    <table border="1">
+        <tr>
+            <th>Course</th>
+            <th>Day</th>
+            <th>Room</th>
+            <th>Timeslot</th>
+        </tr>
+        {% for course_assignment, day, room, timeslot in best_timetable %}
+        <tr>
+            <td>{{ course_assignment }}</td>
+            <td>{{ day.name }}</td>
+            <td>{{ room.name }}</td>
+            <td>{{ timeslot.slot }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+</body>
+</html>

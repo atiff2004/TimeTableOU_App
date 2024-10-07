@@ -99,3 +99,11 @@ class Schedule(models.Model):
 
     def __str__(self):
         return f'{self.day.name} - {self.room.name} - {self.timeslot.slot} - {self.course_assignment}'
+class NewTimeslot(models.Model):
+    slot = models.CharField(max_length=20)
+    start_time = models.TimeField()  # New field for start time
+    end_time = models.TimeField()  # New field for end time
+    shift = models.ForeignKey('Shift', on_delete=models.CASCADE)
+
+    def __str__(self):
+        return f"{self.slot} - {self.shift} ({self.start_time} to {self.end_time})"

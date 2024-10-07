@@ -13,6 +13,7 @@ urlpatterns = [
 
     # URL for deleting Days, Rooms, and Timeslots
     path('manage_data/', views.manage_days_rooms_timeslots, name='manage_data'),
+    path('generate_timetable/', views.generate_timetable, name='generate_timetable'),
     path('add_data/', views.add_data, name='add_data'),
     path('timetable/', views.timetable_view, name='timetable'),
     path('Room/timetable/', views.room_timetable_selection_view, name='room_timetable_selection_view'),

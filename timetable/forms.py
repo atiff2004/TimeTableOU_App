@@ -3,6 +3,8 @@ from .models import Course,Shift,Class, CourseOffering, Teacher, Room, Timeslot,
 from django_select2.forms import ModelSelect2Widget
 from .models import Shift
 
+
+
 class AddShiftForm(forms.ModelForm):
     class Meta:
         model = Shift

@@ -1390,3 +1390,230 @@ def manage_days_rooms_timeslots(request):
         'shift_form': shift_form,
     })
 
+# from .models import Timetable, CourseAssignment, GeneticAlgorithmParams, Schedule
+# from .genetic_algorithm import GeneticAlgorithm
+# import random
+# from django.db import transaction
+
+# def get_required_slots(course_assignment):
+#     """ Calculate the number of required slots based on credit hours. """
+#     credit_hours = course_assignment.credit_hours.split('-')
+#     lecture_hours = int(credit_hours[0])
+#     lab_hours = int(credit_hours[1])
+
+#     required_slots = []
+    
+#     # Calculate lecture slots
+#     if lecture_hours > 0:
+#         required_slots.extend([1] * lecture_hours)  # 1 slot for each hour of lecture
+
+#     # Calculate lab slots (requirement for consecutive slots)
+#     if lab_hours > 0:
+#         required_slots.extend([3] * lab_hours)  # 1 lab requires 3 consecutive slots
+
+#     return required_slots
+
+# def satisfies_constraints(timetable):
+#     """ Check if the timetable satisfies all constraints. """
+#     used_slots = set()
+#     class_days = {}
+#     teacher_conflicts = {}
+#     room_conflicts = {}
+
+#     for course_assignment, day, room, timeslot in timetable:
+#         # Check for shift constraints
+#         if course_assignment.class_assigned.shift != 'M' and timeslot not in ['E', 'M2']:  # Example for shift M
+#             return False
+        
+#         slot_id = (day, room, timeslot)
+
+#         # Check for room conflicts
+#         if slot_id in used_slots:
+#             return False
+#         used_slots.add(slot_id)
+
+#         # Check class conflicts
+#         if day not in class_days:
+#             class_days[day] = {}
+#         if course_assignment.id in class_days[day]:
+#             return False
+#         class_days[day][course_assignment.id] = slot_id
+
+#         # Check teacher conflicts
+#         if course_assignment.teacher_id not in teacher_conflicts:
+#             teacher_conflicts[course_assignment.teacher_id] = set()
+#         if slot_id in teacher_conflicts[course_assignment.teacher_id]:
+#             return False
+#         teacher_conflicts[course_assignment.teacher_id].add(slot_id)
+
+#         # Check room conflicts
+#         if room not in room_conflicts:
+#             room_conflicts[room] = {}
+#         if day not in room_conflicts[room]:
+#             room_conflicts[room][day] = set()
+#         if timeslot in room_conflicts[room][day]:
+#             return False
+#         room_conflicts[room][day].add(timeslot)
+
+#     return True
+
+# def initialize_population(population_size, course_assignments, days, rooms, timeslots):
+#     population = []
+#     for _ in range(population_size):
+#         timetable = []
+#         for course_assignment in course_assignments:
+#             day = random.choice(days)
+#             room = random.choice(rooms)
+#             timeslot = random.choice(timeslots)
+#             timetable.append((course_assignment, day, room, timeslot))
+        
+#         # Only add valid timetables
+#         if satisfies_constraints(timetable):
+#             population.append(timetable)
+#     return population
+
+# def fitness_function(timetable):
+#     fitness = 0
+#     used_slots = set()
+
+#     for course_assignment, day, room, timeslot in timetable:
+#         slot_id = (day, room, timeslot)
+#         if slot_id not in used_slots:
+#             used_slots.add(slot_id)
+#             fitness += 1  # Increment for valid assignments
+#         else:
+#             fitness -= 1  # Decrement for collisions
+
+#         # Add more fitness penalties or bonuses based on other constraints if needed
+
+#     return fitness
+
+# def selection(population):
+#     sorted_population = sorted(population, key=fitness_function, reverse=True)
+#     return sorted_population[:len(sorted_population) // 2]
+
+# def crossover(parent1, parent2):
+#     crossover_point = random.randint(1, len(parent1) - 1)
+#     child = parent1[:crossover_point] + parent2[crossover_point:]
+    
+#     # Ensure the child timetable satisfies constraints
+#     while not satisfies_constraints(child):
+#         # Resample until valid
+#         child = initialize_population(1, [ca for ca in parent1 + parent2], days, rooms, timeslots)[0]
+    
+#     return child
+
+# def mutation(timetable, days, rooms, timeslots, mutation_rate):
+#     for i in range(len(timetable)):
+#         if random.random() < mutation_rate:
+#             # Resample until valid
+#             new_day = random.choice(days)
+#             new_room = random.choice(rooms)
+#             new_timeslot = random.choice(timeslots)
+#             timetable[i] = (timetable[i][0], new_day, new_room, new_timeslot)
+    
+#     # Check if the mutated timetable satisfies constraints
+#     while not satisfies_constraints(timetable):
+#         timetable = initialize_population(1, [ca for ca in timetable], days, rooms, timeslots)[0]
+
+#     return timetable
+
+# def generate_timetable(request):
+#     course_assignments = list(CourseAssignment.objects.all())
+#     days = list(Day.objects.all())
+#     rooms = list(Room.objects.all())
+#     timeslots = list(Timeslot.objects.all())
+    
+#     # Check if any of the lists are empty
+#     if not course_assignments or not days or not rooms or not timeslots:
+#         return render(request, 'timetable/error.html', {'message': 'One or more required entities are missing. Please ensure all data is populated.'})
+
+#     population_size = 50
+#     mutation_rate = 0.1
+#     max_generations = 100
+
+#     population = initialize_population(population_size, course_assignments, days, rooms, timeslots)
+
+#     best_timetable = None
+#     best_fitness = float('-inf')
+
+#     for generation in range(max_generations):
+#         population = selection(population)
+#         new_population = []
+
+#         while len(new_population) < population_size:
+#             parent1 = random.choice(population)
+#             parent2 = random.choice(population)
+#             child = crossover(parent1, parent2)
+#             child = mutation(child, days, rooms, timeslots, mutation_rate)
+#             new_population.append(child)
+
+#         population = new_population
+        
+#         current_best = max(population, key=fitness_function)
+#         current_best_fitness = fitness_function(current_best)
+
+#         if current_best_fitness > best_fitness:
+#             best_fitness = current_best_fitness
+#             best_timetable = current_best
+
+#         print(f'Generation {generation}: Best Fitness = {best_fitness}')
+
+#     if best_timetable:
+#         save_schedule(best_timetable)
+#         return render(request, 'timetable/result.html', {'best_timetable': best_timetable})
+#     else:
+#         return render(request, 'timetable/error.html', {'message': 'No valid schedule found after maximum generations.'})
+# def save_schedule(timetable):
+#     with transaction.atomic():
+#         for course_assignment, day, room, timeslot in timetable:
+#             Schedule.objects.create(
+#                 course_assignment=course_assignment,
+#                 day=day,
+#                 room=room,
+#                 timeslot=timeslot,
+#             )
+# from .ga_schedule import genetic_algorithm_schedule
+# from .models import Schedule
+
+# from django.db import IntegrityError
+
+# def generate_timetable(request):
+#     if request.method == "POST":
+#         best_schedule = genetic_algorithm_schedule()
+#         error_messages = []
+
+#         if best_schedule:
+#             for day, room, timeslot, course_assignment in best_schedule:
+#                 print(f"Trying to save schedule for Day: {day}, Room: {room}, Timeslot: {timeslot}, Course Assignment: {course_assignment}")
+
+#                 if Schedule.objects.filter(day=day, room=room, timeslot=timeslot, course_assignment=course_assignment).exists():
+#                     error_messages.append(f"Schedule for Day: {day}, Room: {room}, Timeslot: {timeslot} already exists.")
+#                 else:
+#                     try:
+#                         Schedule.objects.create(
+#                             day=day,
+#                             room=room,
+#                             timeslot=timeslot,
+#                             course_assignment=course_assignment
+#                         )
+#                         print(f"Successfully saved schedule for Day: {day}, Room: {room}, Timeslot: {timeslot}.")
+#                     except IntegrityError as e:
+#                         error_messages.append(f"Failed to save schedule: {e}")
+
+#             return render(request, 'timetable/generate_timetable.html', {'error_messages': error_messages})
+
+#     return render(request, 'timetable/generate_timetable.html')
+from .ga_schedule import csp_initial_schedule
+from .ga_schedule import simulated_annealing
+from .ga_schedule import generate_schedule
+from .models import Schedule
+from django.db import IntegrityError
+from django.shortcuts import render
+
+def generate_timetable(request):
+    try:
+        generate_schedule()
+        return JsonResponse({'status': 'success', 'message': 'Timetable generated successfully!'})
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)})

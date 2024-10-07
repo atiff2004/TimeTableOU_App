@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Room, Timeslot,CourseOffering, Shift,Day, Course, Class, Schedule, Teacher, CourseAssignment, Department, Semester
+from .models import Room, NewTimeslot ,Timeslot,CourseOffering, Shift,Day, Course, Class, Schedule, Teacher, CourseAssignment, Department, Semester
 
 
 admin.site.register(Department)
@@ -13,4 +13,6 @@ admin.site.register(Teacher)
 admin.site.register(Day)
 admin.site.register(Room)
 admin.site.register(Timeslot)
+admin.site.register(NewTimeslot)
 admin.site.register(Schedule)
+

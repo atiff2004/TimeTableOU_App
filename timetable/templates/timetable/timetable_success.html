@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Timetable Generation</title>
+</head>
+<body>
+    <h1>Timetable Generated Successfully</h1>
+    <table>
+        <tr>
+            <th>Course</th>
+            <th>Day</th>
+            <th>Timeslot</th>
+            <th>Room</th>
+            <th>Is Lab</th>
+        </tr>
+        {% for entry in timetable %}
+        <tr>
+            <td>{{ entry.course_assignment.course.name }}</td>
+            <td>{{ entry.day }}</td>
+            <td>{{ entry.timeslot }}</td>
+            <td>{{ entry.room }}</td>
+            <td>{{ entry.is_lab }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+</body>
+</html>
