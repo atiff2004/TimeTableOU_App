@@ -1573,47 +1573,34 @@ def manage_days_rooms_timeslots(request):
 #                 room=room,
 #                 timeslot=timeslot,
 #             )
-# from .ga_schedule import genetic_algorithm_schedule
-# from .models import Schedule
-
-# from django.db import IntegrityError
-
-# def generate_timetable(request):
-#     if request.method == "POST":
-#         best_schedule = genetic_algorithm_schedule()
-#         error_messages = []
-
-#         if best_schedule:
-#             for day, room, timeslot, course_assignment in best_schedule:
-#                 print(f"Trying to save schedule for Day: {day}, Room: {room}, Timeslot: {timeslot}, Course Assignment: {course_assignment}")
-
-#                 if Schedule.objects.filter(day=day, room=room, timeslot=timeslot, course_assignment=course_assignment).exists():
-#                     error_messages.append(f"Schedule for Day: {day}, Room: {room}, Timeslot: {timeslot} already exists.")
-#                 else:
-#                     try:
-#                         Schedule.objects.create(
-#                             day=day,
-#                             room=room,
-#                             timeslot=timeslot,
-#                             course_assignment=course_assignment
-#                         )
-#                         print(f"Successfully saved schedule for Day: {day}, Room: {room}, Timeslot: {timeslot}.")
-#                     except IntegrityError as e:
-#                         error_messages.append(f"Failed to save schedule: {e}")
-
-#             return render(request, 'timetable/generate_timetable.html', {'error_messages': error_messages})
-
-#     return render(request, 'timetable/generate_timetable.html')
-from .ga_schedule import csp_initial_schedule
-from .ga_schedule import simulated_annealing
-from .ga_schedule import generate_schedule
+from .ga_schedule import genetic_algorithm_schedule
 from .models import Schedule
+
 from django.db import IntegrityError
-from django.shortcuts import render
 
 def generate_timetable(request):
-    try:
-        generate_schedule()
-        return JsonResponse({'status': 'success', 'message': 'Timetable generated successfully!'})
-    except Exception as e:
-        return JsonResponse({'status': 'error', 'message': str(e)})
+    if request.method == "POST":
+        best_schedule = genetic_algorithm_schedule()
+        error_messages = []
+
+        if best_schedule:
+            for day, room, timeslot, course_assignment in best_schedule:
+                print(f"Trying to save schedule for Day: {day}, Room: {room}, Timeslot: {timeslot}, Course Assignment: {course_assignment}")
+
+                if Schedule.objects.filter(day=day, room=room, timeslot=timeslot, course_assignment=course_assignment).exists():
+                    error_messages.append(f"Schedule for Day: {day}, Room: {room}, Timeslot: {timeslot} already exists.")
+                else:
+                    try:
+                        Schedule.objects.create(
+                            day=day,
+                            room=room,
+                            timeslot=timeslot,
+                            course_assignment=course_assignment
+                        )
+                        print(f"Successfully saved schedule for Day: {day}, Room: {room}, Timeslot: {timeslot}.")
+                    except IntegrityError as e:
+                        error_messages.append(f"Failed to save schedule: {e}")
+
+            return render(request, 'timetable/generate_timetable.html', {'error_messages': error_messages})
+
+    return render(request, 'timetable/generate_timetable.html')

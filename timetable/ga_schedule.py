@@ -1,182 +1,212 @@
 import random
 from .models import Department, Semester, Class, CourseAssignment, Schedule, Room, Timeslot, Day
 
-def csp_initial_schedule():
-    schedule = []
-    course_assignments = CourseAssignment.objects.all()
-    available_days = Day.objects.all()
-    available_rooms = Room.objects.all()
-    available_timeslots = Timeslot.objects.all()
+# Constants for GA
+POPULATION_SIZE = 500
+NUM_GENERATIONS = 100
+MUTATION_RATE = 0.1
 
-    for course_assignment in course_assignments:
-        lecture_slots, lab_slots = get_timeslot_requirements(course_assignment.course)
+def genetic_algorithm_schedule(population_size=POPULATION_SIZE, generations=NUM_GENERATIONS):
+    population = initialize_population(population_size)
+    best_schedule = None
 
-        # Assign lab slots (consecutive time slots)
-        if lab_slots:
-            for _ in range(lab_slots[0] // 2):  # Lab slots come in pairs
-                day, room, timeslot = assign_lab_slot(available_days, available_rooms, available_timeslots, course_assignment)
-                if day and room and timeslot:
-                    next_timeslot = get_next_timeslot(timeslot)
-                    if next_timeslot:
-                        schedule.append((day, room, timeslot, course_assignment))
-                        schedule.append((day, room, next_timeslot, course_assignment))
+    for generation in range(generations):
+        population = sorted(population, key=lambda schedule: fitness(schedule), reverse=True)
 
-        # Assign lecture slots (non-consecutive time slots)
-        if lecture_slots:
-            for _ in range(sum(lecture_slots)):
-                day, room, timeslot = assign_lecture_slot(available_days, available_rooms, available_timeslots, course_assignment)
-                if day and room and timeslot:
-                    schedule.append((day, room, timeslot, course_assignment))
+        # Check for a valid solution in the population
+        for schedule in population:
+            if is_valid_schedule(schedule) and count_slots(schedule) == 28:
+                print(f"Valid full schedule found at generation {generation}! Schedule: {schedule}")
+                best_schedule = schedule
+                break
 
-    return schedule
+        if best_schedule:
+            break
 
-def get_timeslot_requirements(course):
-    lecture_hours = int(course.credit_hours)
-    lab_hours = int(course.lab_crh) if course.lab_crh else 0  # Default to 0 if lab_crh is null
+        # If no valid schedule, generate the next population
+        population = evolve_population(population)
 
-    lecture_slots = [1] * lecture_hours
-    lab_slots = [2] if lab_hours > 0 else []  # Lab slots are consecutive (pairs)
+        print(f"Generation {generation + 1} completed.")
 
-    return lecture_slots, lab_slots
+    return best_schedule
 
-def assign_lab_slot(available_days, available_rooms, available_timeslots, course_assignment):
-    max_attempts = 150
-    for _ in range(max_attempts):
-        day = random.choice(available_days)
-        room = random.choice(available_rooms)
-        timeslot = random.choice(available_timeslots)
+def fitness(schedule):
+    score = 0
+    penalty = 0
+    
+    for assignment in schedule:
+        day, room, timeslot, course_assignment = assignment
+        penalty += evaluate_constraints(assignment)
 
-        next_timeslot = get_next_timeslot(timeslot)
+    score = 100 - penalty
+    return score
 
-        if is_valid_consecutive_lab_assignment(day, room, timeslot, next_timeslot, course_assignment):
-            return day, room, timeslot
-    return None, None, None
-
-def assign_lecture_slot(available_days, available_rooms, available_timeslots, course_assignment):
-    max_attempts = 150
-    for _ in range(max_attempts):
-        day = random.choice(available_days)
-        room = random.choice(available_rooms)
-        timeslot = random.choice(available_timeslots)
-
-        if is_valid_non_consecutive_lecture_assignment(day, room, timeslot, course_assignment):
-            return day, room, timeslot
-    return None, None, None
-
-def is_valid_consecutive_lab_assignment(day, room, timeslot, next_timeslot, course_assignment):
-    if not next_timeslot:
-        return False
-
-    # Check if both timeslots are free
-    if Schedule.objects.filter(day=day, room=room, timeslot=timeslot).exists():
-        return False
-    if Schedule.objects.filter(day=day, room=room, timeslot=next_timeslot).exists():
-        return False
-
-    # Check teacher availability
-    if Schedule.objects.filter(day=day, timeslot=timeslot, course_assignment__teacher=course_assignment.teacher).exists():
-        return False
-    if Schedule.objects.filter(day=day, timeslot=next_timeslot, course_assignment__teacher=course_assignment.teacher).exists():
-        return False
-
+def is_valid_schedule(schedule):
+    for assignment in schedule:
+        if evaluate_constraints(assignment) != 0:
+            return False
     return True
 
-def is_valid_non_consecutive_lecture_assignment(day, room, timeslot, course_assignment):
-    # Ensure no room or teacher conflicts
-    if Schedule.objects.filter(day=day, room=room, timeslot=timeslot).exists():
-        return False
-    if Schedule.objects.filter(day=day, timeslot=timeslot, course_assignment__teacher=course_assignment.teacher).exists():
-        return False
-
-    return True
-
-def get_next_timeslot(current_timeslot):
-    current_slot = current_timeslot.slot
-    current_shift = current_timeslot.shift
-    return Timeslot.objects.filter(shift=current_shift).filter(slot__gt=current_slot).order_by('slot').first()
-import math
+def count_slots(schedule):
+    return len(schedule)
 
 def evaluate_constraints(assignment):
     penalty = 0
     day, room, timeslot, course_assignment = assignment
 
-    # Room conflict
-    if Schedule.objects.filter(day=day, room=room, timeslot=timeslot).exists():
-        penalty += 10
+    # Check for room conflicts
+    existing_assignments = Schedule.objects.filter(day=day, room=room, timeslot=timeslot)
+    if existing_assignments.exists():
+        penalty += 10  # Penalty for room conflict
 
-    # Teacher conflict
-    if Schedule.objects.filter(day=day, timeslot=timeslot, course_assignment__teacher=course_assignment.teacher).exists():
-        penalty += 200
+    # Check for teacher conflicts
+    teacher_assignments = Schedule.objects.filter(day=day, timeslot=timeslot, course_assignment__teacher=course_assignment.teacher)
+    if teacher_assignments.exists():
+        penalty += 200  # Penalty for teacher conflict
 
-    # Class conflict
-    if Schedule.objects.filter(day=day, timeslot=timeslot, course_assignment__class_assigned=course_assignment.class_assigned).exists():
-        penalty += 1500
+    # Check for class conflicts (same class assigned in multiple rooms at the same time)
+    class_conflicts = Schedule.objects.filter(day=day, timeslot=timeslot, course_assignment__class_assigned=course_assignment.class_assigned)
+    if class_conflicts.exists():
+        penalty += 1500  # High penalty for class conflict (same class assigned in multiple rooms)
 
-    # Shift conflict
+    # Ensure the timeslot matches the class shift
     if course_assignment.class_assigned.shift != timeslot.shift:
-        penalty += 50
+        penalty += 20  # High penalty for shift conflict
 
     return penalty
 
-def simulated_annealing(schedule, initial_temp=100, cooling_rate=0.003):
-    current_schedule = schedule
-    current_temp = initial_temp
-    best_schedule = current_schedule
+def initialize_population(population_size):
+    population = []
+    available_days = Day.objects.all()
+    available_rooms = Room.objects.all()
+    available_timeslots = Timeslot.objects.all()
+    course_assignments = CourseAssignment.objects.all()
 
-    while current_temp > 1:
-        new_schedule = perturb_schedule(current_schedule)
-        current_cost = calculate_cost(current_schedule)
-        new_cost = calculate_cost(new_schedule)
+    for _ in range(population_size):
+        schedule = []
+        assigned_lecture_count = {assignment.id: 0 for assignment in course_assignments}
+        assigned_lab_count = {assignment.id: 0 for assignment in course_assignments}
 
-        if acceptance_probability(current_cost, new_cost, current_temp) > random.random():
-            current_schedule = new_schedule
+        for course_assignment in course_assignments:
+            lecture_slots, lab_slots = get_timeslot_requirements(course_assignment.course)
 
-        if new_cost < calculate_cost(best_schedule):
-            best_schedule = new_schedule
+            # Assign lab slots
+            if lab_slots:
+                for _ in range(lab_slots[0] // 2):  # Assuming lab hours are in pairs
+                    day, room, timeslot = assign_lab_slot(available_days, available_rooms, available_timeslots, course_assignment)
+                    if day and room and timeslot:
+                        next_timeslot = get_next_timeslot(timeslot)
+                        if next_timeslot:
+                            schedule.append((day, room, timeslot, course_assignment))
+                            schedule.append((day, room, next_timeslot, course_assignment))
+                            assigned_lab_count[course_assignment.id] += 2
 
-        current_temp *= (1 - cooling_rate)
+            # Assign lecture slots
+            if lecture_slots:
+                for _ in range(sum(lecture_slots)):
+                    day, room, timeslot = assign_lecture_slot(available_days, available_rooms, available_timeslots, course_assignment)
+                    if day and room and timeslot:
+                        schedule.append((day, room, timeslot, course_assignment))
+                        assigned_lecture_count[course_assignment.id] += 1
 
-    return best_schedule
-
-def calculate_cost(schedule):
-    return sum(evaluate_constraints(assignment) for assignment in schedule)
-
-def perturb_schedule(schedule):
-    new_schedule = schedule[:]
-    idx1, idx2 = random.sample(range(len(new_schedule)), 2)
-    new_schedule[idx1], new_schedule[idx2] = new_schedule[idx2], new_schedule[idx1]
-    return new_schedule
-
-def acceptance_probability(old_cost, new_cost, temperature):
-    if new_cost < old_cost:
-        return 1.0
-    return math.exp((old_cost - new_cost) / temperature)
-def fitness(schedule):
-    penalty = sum(evaluate_constraints(assignment) for assignment in schedule)
-    return 100 - penalty  # Fitness is higher if penalty is lower
-
-def genetic_algorithm_optimization(schedule, population_size=100, generations=50):
-    population = initialize_population(schedule, population_size)
-    best_schedule = None
-
-    for generation in range(generations):
-        population = sorted(population, key=lambda s: fitness(s), reverse=True)
-
-        if fitness(population[0]) == 100:  # A valid solution is found
-            best_schedule = population[0]
-            break
-
-        population = evolve_population(population)
-
-    return best_schedule if best_schedule else population[0]
-
-def initialize_population(schedule, population_size):
-    population = [schedule]
-    for _ in range(population_size - 1):
-        new_schedule = perturb_schedule(schedule)
-        population.append(new_schedule)
+        population.append(schedule)
 
     return population
+
+def is_class_conflict(day, timeslot, course_assignment):
+    class_conflict = Schedule.objects.filter(day=day, timeslot=timeslot, course_assignment__class_assigned=course_assignment.class_assigned)
+    return class_conflict.exists()  # Return True if there's a conflict
+
+def assign_lab_slot(available_days, available_rooms, available_timeslots, course_assignment):
+    attempts = 0
+    max_attempts = 150  # Increase max attempts to retry more before giving up
+    
+    while attempts < max_attempts:
+        day = random.choice(available_days)
+        room = random.choice(available_rooms)
+        timeslot = random.choice(available_timeslots)
+
+        # Ensure the shift is respected and no class conflict exists
+        if is_valid_shift_assignment(day, room, timeslot, course_assignment) and not is_class_conflict(day, timeslot, course_assignment):
+            if is_valid_consecutive_lab_assignment(day, room, timeslot, course_assignment):
+                return day, room, timeslot  # Return valid slot
+
+        attempts += 1
+
+    return None, None, None
+
+def assign_lecture_slot(available_days, available_rooms, available_timeslots, course_assignment):
+    attempts = 0
+    max_attempts = 150  # Increase max attempts to retry more before giving up
+    
+    while attempts < max_attempts:
+        day = random.choice(available_days)
+        room = random.choice(available_rooms)
+        timeslot = random.choice(available_timeslots)
+
+        # Ensure the shift is respected and no class conflict exists
+        if is_valid_shift_assignment(day, room, timeslot, course_assignment) and not is_class_conflict(day, timeslot, course_assignment):
+            if is_valid_non_consecutive_lecture_assignment(day, room, timeslot, course_assignment):
+                return day, room, timeslot  # Return valid slot
+        attempts += 1
+
+    return None, None, None
+
+def get_timeslot_requirements(course):
+    try:
+        lecture_hours = int(course.credit_hours)
+        lab_hours = course.lab_crh
+    except ValueError:
+        raise ValueError(f"Invalid credit hour format for course: {course.short_name}. Ensure credit hours are integers.")
+
+    lecture_slots = []
+    lab_slots = []
+
+    if lecture_hours == 3:
+        lecture_slots.extend([1, 1])  # 3 credit hours can be divided into 2 slots
+    elif lecture_hours == 2:
+        lecture_slots.append(1)
+    elif lecture_hours == 1:
+        lecture_slots.append(1)
+
+    if lab_hours > 0:
+        lab_slots.append(2)  # Lab hours are typically assigned in pairs
+
+    return lecture_slots, lab_slots
+
+def is_valid_non_consecutive_lecture_assignment(day, room, timeslot, course_assignment):
+    existing_assignments = Schedule.objects.filter(day=day, room=room, timeslot=timeslot)
+    if existing_assignments.exists():
+        return False
+
+    next_timeslot = get_next_timeslot(timeslot)
+    if next_timeslot:
+        existing_assignments_next = Schedule.objects.filter(day=day, room=room, timeslot=next_timeslot, course_assignment__class_assigned=course_assignment.class_assigned)
+        if existing_assignments_next.exists():
+            return False
+
+    return True
+
+def is_valid_consecutive_lab_assignment(day, room, timeslot, course_assignment):
+    next_timeslot = get_next_timeslot(timeslot)
+    if not next_timeslot:
+        return False
+
+    current_slot_occupied = Schedule.objects.filter(day=day, room=room, timeslot=timeslot).exists()
+    next_slot_occupied = Schedule.objects.filter(day=day, room=room, timeslot=next_timeslot).exists()
+
+    if current_slot_occupied or next_slot_occupied:
+        return False
+
+    if course_assignment.course.lab_crh > 0:
+        return True
+
+    return False
+
+def is_valid_shift_assignment(day, room, timeslot, course_assignment):
+    class_shift = course_assignment.class_assigned.shift.name
+    timeslot_shift = timeslot.shift.name
+    return class_shift == timeslot_shift
 
 def evolve_population(population):
     new_population = []
@@ -184,34 +214,49 @@ def evolve_population(population):
     new_population.extend(population[:elite_size])
 
     while len(new_population) < len(population):
-        parent1, parent2 = random.sample(population[:len(population)//2], 2)
+        parent1, parent2 = random.choices(population[:len(population)//2], k=2)
         child1, child2 = crossover(parent1, parent2)
-        child1 = mutate(child1)
-        child2 = mutate(child2)
+
+        child1 = mutate(child1) if random.random() < MUTATION_RATE else child1
+        child2 = mutate(child2) if random.random() < MUTATION_RATE else child2
 
         new_population.extend([child1, child2])
 
     return new_population[:len(population)]
 
 def crossover(schedule1, schedule2):
-    split = len(schedule1) // 2
-    return schedule1[:split] + schedule2[split:], schedule2[:split] + schedule1[split:]
+    split_index = len(schedule1) // 2
+    child1 = schedule1[:split_index] + schedule2[split_index:]
+    child2 = schedule2[:split_index] + schedule1[split_index:]
+    return child1, child2
 
 def mutate(schedule):
-    idx = random.randint(0, len(schedule) - 1)
-    new_schedule = perturb_schedule(schedule)
-    return new_schedule
-def save_schedule(schedule):
-    for day, room, timeslot, course_assignment in schedule:
-        try:
-            if not Schedule.objects.filter(day=day, room=room, timeslot=timeslot, course_assignment=course_assignment).exists():
-                Schedule.objects.create(
-                    day=day, room=room, timeslot=timeslot, course_assignment=course_assignment
-                )
-        except IntegrityError as e:
-            print(f"Error saving schedule: {e}")
-def generate_schedule():
-    initial_schedule = csp_initial_schedule()
-    improved_schedule = simulated_annealing(initial_schedule)
-    optimized_schedule = genetic_algorithm_optimization(improved_schedule)
-    save_schedule(optimized_schedule)
+    mutation_point = random.randint(0, len(schedule) - 1)
+    day = random.choice(Day.objects.all())
+    room = random.choice(Room.objects.all())
+    timeslot = random.choice(Timeslot.objects.all())
+    course_assignment = schedule[mutation_point][3]
+
+    if course_assignment.course.lab_crh > 0:
+        if is_valid_consecutive_lab_assignment(day, room, timeslot, course_assignment):
+            next_timeslot = get_next_timeslot(timeslot)
+            if next_timeslot:
+                schedule[mutation_point] = (day, room, timeslot, course_assignment)
+                schedule[mutation_point + 1] = (day, room, next_timeslot, course_assignment)
+    else:
+        if is_valid_non_consecutive_lecture_assignment(day, room, timeslot, course_assignment):
+            schedule[mutation_point] = (day, room, timeslot, course_assignment)
+
+    return schedule
+
+def get_next_timeslot(current_timeslot):
+    current_slot = current_timeslot.slot
+    current_shift = current_timeslot.shift
+    next_timeslot = (
+        Timeslot.objects.filter(shift=current_shift)
+        .filter(slot__gt=current_slot)
+        .order_by('slot')
+        .first()
+    )
+    return next_timeslot
+
