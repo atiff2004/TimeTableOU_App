@@ -1,8 +1,9 @@
 {% extends 'timetable/base.html' %}
 {% block content %}
-<h2>Generate Schedule</h2>
-<form method="post">
-    {% csrf_token %}
-    <button type="submit">Generate Schedule</button>
-</form>
+<h1>Generated Schedule</h1>
+    <ul>
+      {% for day, room, timeslot, course_assignment in schedule %}
+        <li>{{ day.name }}: {{ room.name }} - {{ timeslot.slot }}: {{ course_assignment.course.short_name }} ({{ course_assignment.teacher.name }})</li>
+      {% endfor %}
+    </ul>
 {% endblock %}

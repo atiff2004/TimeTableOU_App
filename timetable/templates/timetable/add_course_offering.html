@@ -1,10 +1,14 @@
+
 <!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
+    <title>University Timetable</title>
     <!-- Load static files -->
     {% load static %}
     <!-- Include Bootstrap CSS -->
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
     <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'css/styles.css' %}">
     <title>Add Course Offering</title>
@@ -72,21 +76,105 @@
     </script>
 
     <style>
-        /* Ensure the footer is pinned to the bottom */
+        /* Header Styles */
+        .header {
+            background-color: #343a40; /* Dark background */
+            color: white;
+            text-align: center;
+            padding: 1rem;
+        }
+
+        /* Active and Hover Styles for Navbar */
+        .nav-link {
+            margin-right: 15px; /* Space between buttons */
+            transition: background-color 0.3s ease;
+        }
+
+        .nav-link:hover {
+            background-color: #6f42c1; /* Purple hover color */
+            color: white; /* White text on hover */
+        }
+
+        .active {
+            background-color: #dc3545; /* Red highlight color */
+            color: white; /* White text for active link */
+            border-radius: 0.25rem; /* Rounded corners */
+        }
+
+        /* Ensure navbar aligns to the left */
+        .navbar-nav {
+            width: 100%;
+            align-items: flex-start;
+        }
+
+        .navbar-collapse {
+            justify-content: flex-start; /* Align the menu to the left */
+        }
+
+        /* Side navigation menu on collapse */
+        .sidenav {
+            height: 100%;
+            width: 0;
+            position: fixed;
+            z-index: 1;
+            top: 0;
+            left: 0;
+            background-color: #343a40;
+            overflow-x: hidden;
+            transition: 0.5s;
+            padding-top: 60px;
+        }
+
+        .sidenav a {
+            padding: 8px 8px 8px 32px;
+            text-decoration: none;
+            font-size: 1.25rem;
+            color: #fff;
+            display: block;
+            transition: 0.3s;
+        }
+
+        .sidenav a:hover {
+            background-color: #6f42c1;
+            color: white;
+        }
+
+        .sidenav .closebtn {
+            position: absolute;
+            top: 0;
+            right: 25px;
+            font-size: 36px;
+            margin-left: 50px;
+        }
+
+        @media screen and (max-height: 450px) {
+            .sidenav {padding-top: 15px;}
+            .sidenav a {font-size: 18px;}
+        }
+
+        /* Sticky Footer */
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
         .wrapper {
             min-height: 100vh;
             display: flex;
             flex-direction: column;
         }
 
-        /* Ensure the footer sticks to the bottom */
-        .footer {
-            margin-top: auto;
+        .content {
+            flex: 1;
+            margin-top: 20px;
         }
 
-        /* Style form elements */
-        .form-control {
-            margin-bottom: 15px;
+        .footer {
+            background-color: #343a40;
+            color: white;
+            text-align: center;
+            padding: 1rem;
         }
     </style>
 </head>
@@ -94,27 +182,37 @@
 <body>
     <div class="wrapper">
         <!-- Header -->
-        <header class="bg-primary text-white text-center py-3">
+        <header class="header">
             <h1>University Timetable Management</h1>
-            <div class="container">
-                <nav>
-                    <ul class="nav justify-content-end">
-                        <li class="nav-item"><a class="nav-link text-white" href="{% url 'dashboard' %}">Dashboard</a></li>
-                        <li class="nav-item"><a class="nav-link text-white" href="{% url 'add_data' %}">Add Data</a></li>
-                        <li class="nav-item"><a class="nav-link text-white" href="{% url 'Courses_details' %}">Course Details</a></li>
-                        <li class="nav-item"><a class="nav-link text-white" href="{% url 'teacher_contacts' %}">Teacher Contacts</a></li>
-                        <li class="nav-item"><a class="nav-link text-white" href="{% url 'timetable' %}">Full Timetable</a></li>
-                    </ul>
-                </nav>
-            </div>
         </header>
+            <nav class="navbar navbar-dark" style="background-color: #6c757d;">
+                <div class="container-fluid">
+                    <span style="font-size:30px;cursor:pointer;color:white;" onclick="openNav()">&#9776;</span> <!-- Hamburger Icon -->
+                </div>
+            </nav>
+    
+            <!-- Side Navigation (Hidden by default) -->
+            <div id="mySidenav" class="sidenav">
+                <a href="javascript:void(0)" class="closebtn" onclick="closeNav()">&times;</a>
+                <a href="{% url 'dashboard' %}">Dashboard</a>
+                <a href="{% url 'add_data' %}">Add Data</a>
+                <a href="{% url 'Courses_details' %}">Course Details</a>
+                <a href="{% url 'teacher_contacts' %}">Teacher Contacts</a>
+                <a href="{% url 'timetable' %}">Full Timetable</a>
+            </div>
+        
     
         <main class="container mt-4 flex-fill">
             <h2 class="mb-4 text-center">Course Offering</h2>
             
             <form method="post" id="courseOfferingForm">
                 {% csrf_token %}
-                
+                {% if success_message %}
+                    <div class="alert alert-success" role="alert">
+                    {{ success_message }}
+                </div>
+                {% endif %}
+
                 <!-- Search bar for selecting course -->
                 <div class="form-group">
                     <label for="course_search">Search Course:</label>
@@ -164,5 +262,16 @@
             <p>&copy; 2024 University Timetable System</p>
         </footer>
     </div>
+    
+    <!-- JavaScript for side navigation -->
+    <script>
+        function openNav() {
+            document.getElementById("mySidenav").style.width = "250px";
+        }
+
+        function closeNav() {
+            document.getElementById("mySidenav").style.width = "0";
+        }
+    </script>
 </body>
 </html>

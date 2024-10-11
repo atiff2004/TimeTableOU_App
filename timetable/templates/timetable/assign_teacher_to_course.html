@@ -3,10 +3,10 @@
 
 {% block content %}
 <div class="container">
-    <h2 class="text-center mb-4">Assign Teacher to Class</h2> <!-- Fixed the heading tag -->
+    <h2 class="text-center mb-4">Assign Teacher to Class</h2>
     <form method="post" class="form-container">
         {% csrf_token %}
-        
+
         <div class="form-row justify-content-center">
             <div class="form-group col-md-4">
                 <label for="id_department">Select Department:</label>
@@ -16,8 +16,9 @@
                         <option value="{{ department.id }}">{{ department.name }}</option>
                     {% endfor %}
                 </select>
-            </div>
+            </div></div>
 
+            <div class="form-row justify-content-center">
             <div class="form-group col-md-4">
                 <label for="id_semester">Select Semester:</label>
                 <select id="id_semester" name="semester" class="form-control" onchange="loadCourseClassPairs()">
@@ -27,28 +28,32 @@
                     {% endfor %}
                 </select>
             </div>
+        </div>
 
+        <div class="form-row justify-content-center">
             <div class="form-group col-md-4">
                 <label for="id_course_assignment">Select Class:</label>
-                <select id="id_course_assignment" name="course_assignment" class="form-control">
-                    <option value="">Select Class</option>
+                <div id="course_assignments">
+                    <!-- Checkbox list of course assignments will be inserted here -->
+                </div>
+            </div>
+        </div>
+
+        <div class="form-row justify-content-center">
+            <div class="form-group col-md-4">
+                <label for="id_teacher">Select Teacher:</label>
+                <select id="id_teacher" name="teacher" class="form-control">
+                    {% for teacher in form.teacher.field.queryset %}
+                        <option value="{{ teacher.id }}">{{ teacher.name }}</option>
+                    {% endfor %}
                 </select>
             </div>
         </div>
 
-        <div class="form-group">
-            <label for="id_teacher">Select Teacher:</label>
-            <select id="id_teacher" name="teacher" class="form-control">
-                {% for teacher in form.teacher.field.queryset %}
-                    <option value="{{ teacher.id }}">{{ teacher.name }}</option>
-                {% endfor %}
-            </select>
-        </div>
-
-        <div class="text-center">
+        <div class="form-row justify-content-center">
             <button type="submit" class="btn btn-primary">Assign Teacher</button>
         </div>
-    </form>
+    </form><br><br>
 </div>
 
 <script>
@@ -60,15 +65,19 @@
             fetch(`/load_course_class_pairs/?department=${departmentId}&semester=${semesterId}`)
             .then(response => response.json())
             .then(data => {
-                const courseAssignmentSelect = document.getElementById('id_course_assignment');
-                courseAssignmentSelect.innerHTML = '<option value="">Select Class</option>';
+                const courseAssignmentsContainer = document.getElementById('course_assignments');
+                courseAssignmentsContainer.innerHTML = '';
                 data.course_assignments.forEach(pair => {
-                    courseAssignmentSelect.innerHTML += `
-                        <option value="${pair.id}">${pair.class_info} - ${pair.course__short_name}</option>
+                    courseAssignmentsContainer.innerHTML += `
+                        <div class="form-check">
+                            <input type="checkbox" name="course_assignment" value="${pair.id}" class="form-check-input">
+                            <label class="form-check-label">${pair.class_info} - ${pair.course__short_name}</label>
+                        </div>
                     `;
                 });
             });
         }
     }
 </script>
+
 {% endblock %}

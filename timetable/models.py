@@ -65,6 +65,7 @@ class Room(models.Model):
 
 class Timeslot(models.Model):
     slot = models.CharField(max_length=20)
+    category = models.CharField(max_length=20, null=True, blank=True)
     shift = models.ForeignKey(Shift, on_delete=models.CASCADE)  # New shift field
 
     def __str__(self):

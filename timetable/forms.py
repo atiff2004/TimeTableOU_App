@@ -33,7 +33,7 @@ class addroom(forms.ModelForm):
 class addslot(forms.ModelForm):
     class Meta:
         model = Timeslot
-        fields = ['slot', 'shift']
+        fields = ['slot', 'category' ,'shift']
 
     def __init__(self, *args, **kwargs):
         super(addslot, self).__init__(*args, **kwargs)
@@ -149,7 +149,7 @@ class CourseForm(forms.ModelForm):
 class CourseAssignmentForm(forms.Form):
     department = forms.ModelChoiceField(queryset=Department.objects.all(), required=True, widget=forms.Select(attrs={'class': 'form-control'}))
     semester = forms.ModelChoiceField(queryset=Semester.objects.all(), required=True, widget=forms.Select(attrs={'class': 'form-control'}))
-    class_assigned = forms.ModelChoiceField(queryset=Class.objects.none(), required=True, widget=forms.Select(attrs={'class': 'form-control'}))
+    class_assigned = forms.ModelMultipleChoiceField(queryset=Class.objects.none(), required=True, widget=forms.CheckboxSelectMultiple)
     courses = forms.ModelMultipleChoiceField(queryset=Course.objects.none(), widget=forms.CheckboxSelectMultiple, required=True)
 
     def __init__(self, *args, **kwargs):
@@ -168,10 +168,11 @@ class CourseAssignmentForm(forms.Form):
                 courseoffering__semester_id=semester_id
             ).distinct().order_by('full_name')
 
+
 class TeacherAssignmentForm(forms.Form):
     department = forms.ModelChoiceField(queryset=Department.objects.all(), required=True, widget=forms.Select(attrs={'class': 'form-control'}))
     semester = forms.ModelChoiceField(queryset=Semester.objects.all(), required=True, widget=forms.Select(attrs={'class': 'form-control'}))
-    course_assignment = forms.ModelChoiceField(queryset=CourseAssignment.objects.none(), required=True, widget=forms.Select(attrs={'class': 'form-control'}))
+    course_assignment = forms.ModelMultipleChoiceField(queryset=CourseAssignment.objects.none(), required=True, widget=forms.CheckboxSelectMultiple)
     teacher = forms.ModelChoiceField(queryset=Teacher.objects.all(), required=True, widget=forms.Select(attrs={'class': 'form-control'}))
 
     def __init__(self, *args, **kwargs):
@@ -192,6 +193,7 @@ class TeacherAssignmentForm(forms.Form):
                 self.fields['course_assignment'].queryset = CourseAssignment.objects.none()
         else:
             self.fields['course_assignment'].queryset = CourseAssignment.objects.none()
+
 
 class ScheduleForm(forms.Form):
     day = forms.ModelChoiceField(queryset=Day.objects.all(), label='Day', required=True)

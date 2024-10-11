@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Download Data</title>
+</head>
+<body>
+    <h1>Select Data to Download</h1>
+    <form method="get" action="{% url 'export_excel' %}">
+        <label for="file_type">Select the file type:</label>
+        <select name="file_type" id="file_type" required>
+            <option value="course_offering">Course Offering (Select Year Below)</option>
+            <option value="course_assignment">Course Assignment</option>
+            <option value="allocation">Allocation Sheet</option>
+            <option value="teacher">Teacher</option>
+        </select>
+
+        <div id="year_section" style="display:none;">
+            <label for="year">Year:</label>
+            <input type="number" name="year" id="year" placeholder="Enter Year" min="2000">
+        </div>
+
+        <button type="submit">Download</button>
+    </form>
+
+    <script>
+        document.getElementById('file_type').addEventListener('change', function() {
+            if (this.value === 'course_offering') {
+                document.getElementById('year_section').style.display = 'block';
+            } else {
+                document.getElementById('year_section').style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>

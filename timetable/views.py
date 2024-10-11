@@ -37,7 +37,7 @@ def add_course(request):
             else:
                 # Save the new course
                 course.save()
-                return redirect('dashboard')  # Or redirect to the appropriate page
+                return redirect('add_course')  # Or redirect to the appropriate page
     else:
         form = CourseForm()
     
@@ -77,22 +77,24 @@ def assign_course_to_class(request):
     if request.method == 'POST':
         department_id = request.POST.get('department')
         semester_id = request.POST.get('semester')
-        
+
         form = CourseAssignmentForm(request.POST, department_id=department_id, semester_id=semester_id)
-        
+
         if form.is_valid():
-            selected_class = form.cleaned_data['class_assigned']
+            selected_classes = form.cleaned_data['class_assigned']
             selected_courses = form.cleaned_data['courses']
 
-            for course in selected_courses:
-                CourseAssignment.objects.get_or_create(
-                    course=course,
-                    class_assigned=selected_class
-                )
+            for selected_class in selected_classes:
+                for course in selected_courses:
+                    CourseAssignment.objects.get_or_create(
+                        course=course,
+                        class_assigned=selected_class
+                    )
 
             return redirect('assign_teacher_to_course')
 
     return render(request, 'timetable/assign_course_to_class.html', {'form': form})
+
 
 def load_classes_and_courses(request):
     department_id = request.GET.get('department')
@@ -142,19 +144,23 @@ def assign_teacher_to_course(request):
     if request.method == 'POST':
         form = TeacherAssignmentForm(request.POST)
         if form.is_valid():
-            course_assignment = form.cleaned_data['course_assignment']
+            selected_course_assignments = form.cleaned_data['course_assignment']
             teacher = form.cleaned_data['teacher']
 
-            course_assignment.teacher = teacher
-            course_assignment.save()
+            for course_assignment in selected_course_assignments:
+                course_assignment.teacher = teacher
+                course_assignment.save()
 
             # Success message after creation
-            return render(request, 'assign_teacher_to_course.html', {
-            'success_message': f"Successfully Teacher Assigned." })
+            return render(request, 'timetable/assign_teacher_to_course.html', {
+                'form': form,
+                'success_message': "Successfully assigned teacher to selected course assignments."
+            })
     else:
         form = TeacherAssignmentForm()
 
     return render(request, 'timetable/assign_teacher_to_course.html', {'form': form})
+
 
 def load_course_class_pairs(request):
     department_id = request.GET.get('department')
@@ -219,6 +225,10 @@ def assign_schedule(request):
                     'semesters': semesters
                 })
 
+            # Get the course details for credit hours and lab credit hours
+            course = course_assign.course
+            shift = class_assigned.shift  # Assuming `Class` model has a `shift` field
+
             # Check room, teacher, and class availability
             if Schedule.objects.filter(day=day, room=room, timeslot=timeslot).exists():
                 form.add_error(None, "This room is already booked for the selected timeslot.")
@@ -226,10 +236,52 @@ def assign_schedule(request):
                 form.add_error(None, "This teacher is already assigned to another course at this time.")
             elif Schedule.objects.filter(day=day, timeslot=timeslot, course_assignment__class_assigned=course_assign.class_assigned).exists():
                 form.add_error(None, "This class is already assigned to a different room at this time.")
+            
+            # Check if the class and timeslot shifts match
+            elif shift.name == 'M' and timeslot.shift.name != 'M':
+                form.add_error(None, "This class is assigned to the morning shift, so it can only be scheduled in morning timeslots.")
+            elif shift.name == 'E' and timeslot.shift.name != 'E':
+                form.add_error(None, "This class is assigned to the evening shift, so it can only be scheduled in evening timeslots.")
+
             else:
-                # All checks passed, save the schedule
-                Schedule.objects.create(day=day, room=room, timeslot=timeslot, course_assignment=course_assign)
-                return redirect('timetable')  # Redirect to the timetable page
+                # Check if the timeslot category matches the course credit hours requirements
+                credit_hours = int(course.credit_hours)
+                lab_crh = int(course.lab_crh)
+                
+                if credit_hours == 2 and lab_crh == 0:
+                    # 1 slot strictly in 'lab_slot'
+                    if timeslot.category != 'lab_slot':
+                        form.add_error(None, "This course requires 1 slot strictly in 'lab_slot' for 2 credit hours with no lab hours.")
+                    else:
+                        # Save schedule if condition is met
+                        Schedule.objects.create(day=day, room=room, timeslot=timeslot, course_assignment=course_assign)
+                        return redirect('timetable')  # Redirect to the timetable page
+                        
+                elif credit_hours == 2 and lab_crh == 1:
+                    # 2 slots: 1 in 'lab_slot' and the other in 'lec_slot' or 'lab_slot'
+                    existing_slots_count = Schedule.objects.filter(course_assignment=course_assign).count()
+                    if existing_slots_count == 0 and timeslot.category == 'lab_slot':
+                        Schedule.objects.create(day=day, room=room, timeslot=timeslot, course_assignment=course_assign)
+                        return redirect('timetable')
+                    elif existing_slots_count == 1 and timeslot.category in ['lec_slot', 'lab_slot']:
+                        Schedule.objects.create(day=day, room=room, timeslot=timeslot, course_assignment=course_assign)
+                        return redirect('timetable')
+                    else:
+                        form.add_error(None, "This course requires one slot in 'lab_slot' and another in either category.")
+
+                elif credit_hours == 3 and lab_crh == 0:
+                    # 2 slots in either category
+                    Schedule.objects.create(day=day, room=room, timeslot=timeslot, course_assignment=course_assign)
+                    return redirect('timetable')
+
+                elif credit_hours == 3 and lab_crh == 1:
+                    # 3 slots in either category
+                    Schedule.objects.create(day=day, room=room, timeslot=timeslot, course_assignment=course_assign)
+                    return redirect('timetable')
+                
+                else:
+                    form.add_error(None, "Invalid combination of credit hours and lab hours.")
+
         else:
             # Add form errors if validation fails
             form.add_error(None, "Form submission error. Please check your inputs.")
@@ -241,6 +293,7 @@ def assign_schedule(request):
         'departments': departments,
         'semesters': semesters
     })
+
 
 
 def load_classes(request):
@@ -687,10 +740,17 @@ def add_course_offering(request):
             except ValueError:
                 return HttpResponseBadRequest("Invalid department or semester ID")
 
-        # Success message after creation
-        return render(request, 'timetable/add_course_offering.html', {
-            'success_message': f"Successfully Course Offer." })
+        # Prepare data for re-rendering with success message
+        departments = Department.objects.all()
+        semesters = Semester.objects.all()
 
+        return render(request, 'timetable/add_course_offering.html', {
+            'departments': departments,
+            'semesters': semesters,
+            'success_message': "Successfully added Course Offering."
+        })
+
+    # Render the form with initial data on a GET request
     departments = Department.objects.all()
     semesters = Semester.objects.all()
 
@@ -1390,6 +1450,131 @@ def manage_days_rooms_timeslots(request):
         'shift_form': shift_form,
     })
 
+from django.http import HttpResponse
+from django.shortcuts import render
+from .models import CourseOffering, CourseAssignment, Teacher, Course
+import openpyxl
+
+from django.http import HttpResponse
+import openpyxl
+
+def export_excel(request):
+    # Check for selected option and filter the data accordingly
+    selected_option = request.GET.get('file_type')
+    year = request.GET.get('year')  # For Course Offering selection with year
+
+    if selected_option == 'course_offering':
+        data = CourseOffering.objects.filter(year=year)  # Only data for the selected year
+        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = f'attachment; filename=course_offering_{year}.xlsx'
+
+        workbook = openpyxl.Workbook()
+        worksheet = workbook.active
+        worksheet.title = 'Course Offering'
+
+        # Adding headers
+        headers = ['Course Code', 'Full_Name', 'Course Short_name', 'credit_hours', 'lab_crh', 'Department', 'Semester', 'Year']
+        worksheet.append(headers)
+
+        for offering in data:
+            worksheet.append([
+                offering.course.course_code,
+                offering.course.full_name,
+                offering.course.short_name,
+                offering.course.credit_hours,
+                offering.course.lab_crh,
+                offering.department.name,
+                offering.semester.name,
+                offering.year
+            ])
+
+        workbook.save(response)
+        return response
+
+    elif selected_option == 'course_assignment':
+        data = CourseAssignment.objects.all()
+        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = 'attachment; filename=course_assignment.xlsx'
+
+        workbook = openpyxl.Workbook()
+        worksheet = workbook.active
+        worksheet.title = 'Course Assignment'
+
+        headers = ['Class_Name', 'Class_semester', 'Class_Section', 'Course_name', 'Course_code', 'Teacher_name']
+        worksheet.append(headers)
+
+        for assignment in data:
+            worksheet.append([
+                assignment.class_assigned.name,
+                assignment.class_assigned.semester.name,
+                assignment.class_assigned.section,
+                assignment.course.short_name,
+                assignment.course.course_code,
+                assignment.teacher.name if assignment.teacher else 'No Teacher'
+            ])
+
+        workbook.save(response)
+        return response
+
+    elif selected_option == 'allocation':
+        data = CourseAssignment.objects.all()
+        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = 'attachment; filename=allocation_sheet.xlsx'
+
+        workbook = openpyxl.Workbook()
+        worksheet = workbook.active
+        worksheet.title = 'Allocation Sheet'
+
+        # Updated headers to match the new format
+        headers = ['Department', 'Class_Name', 'Class_semester', 'Class_Section', 'Full_Name', 'Short_Name', 'Course_code', 'credit_hours', 'lab_crh', 'Category', 'Teacher_name']
+        worksheet.append(headers)
+
+        # Updated row data to match the new format
+        for assignment in data:
+            worksheet.append([
+                assignment.class_assigned.department.name,
+                assignment.class_assigned.name,
+                assignment.class_assigned.semester.name,
+                assignment.class_assigned.section,
+                assignment.course.full_name,
+                assignment.course.short_name,
+                assignment.course.course_code,
+                assignment.course.credit_hours,
+                assignment.course.lab_crh,
+                assignment.course.category,
+                assignment.teacher.name if assignment.teacher else 'No Teacher'
+            ])
+
+        workbook.save(response)
+        return response
+
+    elif selected_option == 'teacher':
+        data = Teacher.objects.all()
+        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = 'attachment; filename=teacher.xlsx'
+
+        workbook = openpyxl.Workbook()
+        worksheet = workbook.active
+        worksheet.title = 'Teachers'
+
+        headers = ['Name', 'Phone Number', 'Gmail']
+        worksheet.append(headers)
+
+        for teacher in data:
+            worksheet.append([
+                teacher.name,
+                teacher.phone_number,
+                teacher.gmail
+            ])
+
+        workbook.save(response)
+        return response
+
+    return render(request, 'timetable/select_file.html')
+ 
+     # Return to the selection template if no file_type is specified
+
+
 # from .models import Timetable, CourseAssignment, GeneticAlgorithmParams, Schedule
 # from .genetic_algorithm import GeneticAlgorithm
 # import random
@@ -1573,34 +1758,153 @@ def manage_days_rooms_timeslots(request):
 #                 room=room,
 #                 timeslot=timeslot,
 #             )
-from .ga_schedule import genetic_algorithm_schedule
-from .models import Schedule
+# from .ga_schedule import genetic_algorithm_schedule
+# from .models import Schedule
 
-from django.db import IntegrityError
+# from django.db import IntegrityError
 
+# def generate_timetable(request):
+#     if request.method == "POST":
+#         best_schedule = genetic_algorithm_schedule()
+#         error_messages = []
+
+#         if best_schedule:
+#             for day, room, timeslot, course_assignment in best_schedule:
+#                 print(f"Trying to save schedule for Day: {day}, Room: {room}, Timeslot: {timeslot}, Course Assignment: {course_assignment}")
+
+#                 if Schedule.objects.filter(day=day, room=room, timeslot=timeslot, course_assignment=course_assignment).exists():
+#                     error_messages.append(f"Schedule for Day: {day}, Room: {room}, Timeslot: {timeslot} already exists.")
+#                 else:
+#                     try:
+#                         Schedule.objects.create(
+#                             day=day,
+#                             room=room,
+#                             timeslot=timeslot,
+#                             course_assignment=course_assignment
+#                         )
+#                         print(f"Successfully saved schedule for Day: {day}, Room: {room}, Timeslot: {timeslot}.")
+#                     except IntegrityError as e:
+#                         error_messages.append(f"Failed to save schedule: {e}")
+
+#             return render(request, 'timetable/generate_timetable.html', {'error_messages': error_messages})
+
+#     return render(request, 'timetable/generate_timetable.html')
+from django.shortcuts import render, redirect
+from .models import CourseAssignment, Day, Room, Timeslot, Schedule
+from .models import Department, Semester, Class
+import random
+from deap import base, creator, tools
+
+# Function to calculate required number of slots for a course based on credit hours
+def calculate_slots(course):
+    credit_hours = int(course.credit_hours.split(' ')[0])
+    lab_hours = course.lab_crh
+    lecture_slots = credit_hours * 2  # Assuming 1 lecture hour needs 2 slots
+    lab_slots = lab_hours * 2  # Each lab credit hour equals 2 slots
+    return lecture_slots, lab_slots
+
+# Define fitness function for Genetic Algorithm (GA)
+creator.create("FitnessMulti", base.Fitness, weights=(-1.0,))  # Minimize conflicts
+creator.create("Individual", list, fitness=creator.FitnessMulti)
+
+toolbox = base.Toolbox()
+
+# Define evaluation function for GA
+def evaluate(individual):
+    # Calculate fitness based on constraints
+    conflicts = 0
+    for schedule in individual:
+        day, room, timeslot, course_assignment = schedule
+
+        # Check room availability
+        if Schedule.objects.filter(day=day, room=room, timeslot=timeslot).exists():
+            conflicts += 1
+        # Check teacher availability
+        if Schedule.objects.filter(day=day, timeslot=timeslot, course_assignment__teacher=course_assignment.teacher).exclude(course_assignment__course=course_assignment.course).exists():
+            conflicts += 1
+        # Check class availability
+        if Schedule.objects.filter(day=day, timeslot=timeslot, course_assignment__class_assigned=course_assignment.class_assigned).exists():
+            conflicts += 1
+
+    return conflicts,
+
+# Generate the timetable
 def generate_timetable(request):
-    if request.method == "POST":
-        best_schedule = genetic_algorithm_schedule()
-        error_messages = []
+    # Retrieve all available days, rooms, and timeslots from the database
+    days = list(Day.objects.all())
+    rooms = list(Room.objects.all())
+    timeslots = list(Timeslot.objects.all())
+    course_assignments = list(CourseAssignment.objects.all())
 
-        if best_schedule:
-            for day, room, timeslot, course_assignment in best_schedule:
-                print(f"Trying to save schedule for Day: {day}, Room: {room}, Timeslot: {timeslot}, Course Assignment: {course_assignment}")
+    # Create population for GA (random schedules)
+    population_size = 100
+    population = []
+    
+    for _ in range(population_size):
+        individual = []
+        for course_assignment in course_assignments:
+            lecture_slots, lab_slots = calculate_slots(course_assignment.course)
 
-                if Schedule.objects.filter(day=day, room=room, timeslot=timeslot, course_assignment=course_assignment).exists():
-                    error_messages.append(f"Schedule for Day: {day}, Room: {room}, Timeslot: {timeslot} already exists.")
-                else:
-                    try:
-                        Schedule.objects.create(
-                            day=day,
-                            room=room,
-                            timeslot=timeslot,
-                            course_assignment=course_assignment
-                        )
-                        print(f"Successfully saved schedule for Day: {day}, Room: {room}, Timeslot: {timeslot}.")
-                    except IntegrityError as e:
-                        error_messages.append(f"Failed to save schedule: {e}")
+            # Assign lecture and lab slots for the course
+            for _ in range(lecture_slots + lab_slots):
+                day = random.choice(days)
+                room = random.choice(rooms)
+                timeslot = random.choice(timeslots)
+                individual.append([day, room, timeslot, course_assignment])
+        
+        population.append(creator.Individual(individual))
+    
+    # Genetic algorithm for optimization
+    toolbox.register("mate", tools.cxTwoPoint)
+    toolbox.register("mutate", tools.mutShuffleIndexes, indpb=0.05)
+    toolbox.register("select", tools.selTournament, tournsize=3)
+    toolbox.register("evaluate", evaluate)
 
-            return render(request, 'timetable/generate_timetable.html', {'error_messages': error_messages})
+    # Evolution process
+    generations = 50
+    for gen in range(generations):
+        offspring = toolbox.select(population, len(population))
+        offspring = list(map(toolbox.clone, offspring))
 
-    return render(request, 'timetable/generate_timetable.html')
+        # Apply crossover and mutation
+        for child1, child2 in zip(offspring[::2], offspring[1::2]):
+            if random.random() < 0.5:  # Crossover probability
+                toolbox.mate(child1, child2)
+                del child1.fitness.values
+                del child2.fitness.values
+        
+        for mutant in offspring:
+            if random.random() < 0.2:  # Mutation probability
+                toolbox.mutate(mutant)
+                del mutant.fitness.values
+
+        # Evaluate fitness of new individuals
+        invalid_ind = [ind for ind in offspring if not ind.fitness.valid]
+        fitnesses = map(toolbox.evaluate, invalid_ind)
+        for ind, fit in zip(invalid_ind, fitnesses):
+            ind.fitness.values = fit
+        
+        # Replace the old population with the new one
+        population[:] = offspring
+
+    # Select the best individual (schedule)
+    best_schedule = tools.selBest(population, 1)[0]
+
+    # Final validation to ensure no conflicts
+    for schedule in best_schedule:
+        day, room, timeslot, course_assignment = schedule
+        if Schedule.objects.filter(day=day, room=room, timeslot=timeslot).exists():
+            return render(request, 'timetable/error.html', {'error': 'Room conflict detected'})
+        if Schedule.objects.filter(day=day, timeslot=timeslot, course_assignment__teacher=course_assignment.teacher).exclude(course_assignment__course=course_assignment.course).exists():
+            return render(request, 'timetable/error.html', {'error': 'Teacher conflict detected'})
+        # In your generate_timetable function
+        if Schedule.objects.filter(day=day, timeslot=timeslot, course_assignment__class_assigned=class_assigned).exists():
+            print(f"Conflict detected for Class: {class_assigned}, Day: {day}, Timeslot: {timeslot}")
+            raise ValueError("Class conflict detected")
+
+
+        # Save the schedule
+        Schedule.objects.create(day=day, room=room, timeslot=timeslot, course_assignment=course_assignment)
+
+    return redirect('timetable')  # Redirect to the timetable page after successful schedule generation
+
