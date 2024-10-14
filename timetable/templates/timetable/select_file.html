@@ -10,8 +10,8 @@
         <label for="file_type">Select the file type:</label>
         <select name="file_type" id="file_type" required>
             <option value="course_offering">Course Offering (Select Year Below)</option>
+            <option value="allocation">Allocation Sheet (Select Year Below)</option>
             <option value="course_assignment">Course Assignment</option>
-            <option value="allocation">Allocation Sheet</option>
             <option value="teacher">Teacher</option>
         </select>
 
@@ -25,7 +25,7 @@
 
     <script>
         document.getElementById('file_type').addEventListener('change', function() {
-            if (this.value === 'course_offering') {
+            if (this.value === 'course_offering' || this.value === 'allocation') {
                 document.getElementById('year_section').style.display = 'block';
             } else {
                 document.getElementById('year_section').style.display = 'none';

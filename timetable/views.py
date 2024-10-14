@@ -205,7 +205,7 @@ def assign_schedule(request):
 
         # Initialize the form with POST data and extra arguments
         form = ScheduleForm(request.POST, department_id=department_id, semester_id=semester_id, class_id=class_id)
-        
+
         if form.is_valid():
             day = form.cleaned_data['day']
             room = form.cleaned_data['room']
@@ -213,7 +213,7 @@ def assign_schedule(request):
             department = form.cleaned_data['department']
             semester = form.cleaned_data['semester']
             class_assigned = form.cleaned_data['class_select']
-            
+
             try:
                 # Retrieve CourseAssignment object using the provided ID
                 course_assign = CourseAssignment.objects.get(id=course_assignment_id)
@@ -229,14 +229,23 @@ def assign_schedule(request):
             course = course_assign.course
             shift = class_assigned.shift  # Assuming `Class` model has a `shift` field
 
+            # Check if a teacher is assigned
+            if course_assign.teacher:
+                # If a teacher is assigned, check their availability
+                if Schedule.objects.filter(day=day, timeslot=timeslot, course_assignment__teacher=course_assign.teacher).exists():
+                    form.add_error(None, f"{course_assign.teacher} is already assigned to another course at this time.")
+                    return render(request, 'timetable/assign_schedule.html', {
+                        'form': form,
+                        'departments': departments,
+                        'semesters': semesters
+                    })
+
             # Check room, teacher, and class availability
             if Schedule.objects.filter(day=day, room=room, timeslot=timeslot).exists():
                 form.add_error(None, "This room is already booked for the selected timeslot.")
-            elif Schedule.objects.filter(day=day, timeslot=timeslot, course_assignment__teacher=course_assign.teacher).exclude(course_assignment__course=course_assign.course).exists():
-                form.add_error(None, "This teacher is already assigned to another course at this time.")
             elif Schedule.objects.filter(day=day, timeslot=timeslot, course_assignment__class_assigned=course_assign.class_assigned).exists():
                 form.add_error(None, "This class is already assigned to a different room at this time.")
-            
+
             # Check if the class and timeslot shifts match
             elif shift.name == 'M' and timeslot.shift.name != 'M':
                 form.add_error(None, "This class is assigned to the morning shift, so it can only be scheduled in morning timeslots.")
@@ -247,7 +256,7 @@ def assign_schedule(request):
                 # Check if the timeslot category matches the course credit hours requirements
                 credit_hours = int(course.credit_hours)
                 lab_crh = int(course.lab_crh)
-                
+
                 if credit_hours == 2 and lab_crh == 0:
                     # 1 slot strictly in 'lab_slot'
                     if timeslot.category != 'lab_slot':
@@ -255,8 +264,8 @@ def assign_schedule(request):
                     else:
                         # Save schedule if condition is met
                         Schedule.objects.create(day=day, room=room, timeslot=timeslot, course_assignment=course_assign)
-                        return redirect('timetable')  # Redirect to the timetable page
-                        
+                        return redirect('timetable')
+
                 elif credit_hours == 2 and lab_crh == 1:
                     # 2 slots: 1 in 'lab_slot' and the other in 'lec_slot' or 'lab_slot'
                     existing_slots_count = Schedule.objects.filter(course_assignment=course_assign).count()
@@ -278,7 +287,7 @@ def assign_schedule(request):
                     # 3 slots in either category
                     Schedule.objects.create(day=day, room=room, timeslot=timeslot, course_assignment=course_assign)
                     return redirect('timetable')
-                
+
                 else:
                     form.add_error(None, "Invalid combination of credit hours and lab hours.")
 
@@ -1500,7 +1509,7 @@ def export_excel(request):
         worksheet = workbook.active
         worksheet.title = 'Course Assignment'
 
-        headers = ['Class_Name', 'Class_semester', 'Class_Section', 'Course_name', 'Course_code', 'Teacher_name']
+        headers = ['Class_Name', 'Class_semester', 'Class_Section','Class_Shift', 'Course_name', 'Course_code', 'Teacher_name']
         worksheet.append(headers)
 
         for assignment in data:
@@ -1508,9 +1517,11 @@ def export_excel(request):
                 assignment.class_assigned.name,
                 assignment.class_assigned.semester.name,
                 assignment.class_assigned.section,
+                str(assignment.class_assigned.shift) if assignment.class_assigned.shift else 'No Shift',  # Convert the shift to a string or handle None
                 assignment.course.short_name,
                 assignment.course.course_code,
                 assignment.teacher.name if assignment.teacher else 'No Teacher'
+            
             ])
 
         workbook.save(response)
