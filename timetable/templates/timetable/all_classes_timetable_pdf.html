@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>All Classes Timetable</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 20mm;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        .class-timetable {
+            margin-bottom: 20px;
+            page-break-after: always; /* Ensure each table starts on a new page */
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+            font-size: 14px; /* Increased font size for better readability */
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 10px; /* Increased padding for clearer spacing */
+            text-align: center;
+        }
+        th {
+            background-color: #666666;
+            color: white;
+            font-size: 16px; /* Larger font for headers */
+        }
+        td {
+            background-color: #f9f9f9;
+            font-size: 14px; /* Increased font size without bold text */
+            font-weight: normal; /* Ensure text is not bold */
+        }
+        .class-header {
+            background-color: #3c4660;
+            color: white;
+            padding: 12px;
+            text-align: center;
+            font-size: 18px; /* Increased font size for the class name header */
+            position: sticky; /* Keeps the header together with the table */
+            top: 0;
+            z-index: 1; /* Ensures the header stays on top */
+        }
+    </style>
+</head>
+<body>
+    {% for class, class_timetable in timetable_data.items %}
+        <div class="class-timetable">
+            <div class="class-header">
+                {{ class.name }} {{ class.semester.name }}{{ class.section }} ({{ class.shift.name }})
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Days / Timeslots</th>
+                        {% for timeslot in class_timetable.0.slots %}  {# Display timeslots based on the class shift #}
+                            <th>{{ timeslot.timeslot.slot }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for day_row in class_timetable %}
+                    <tr>
+                        <td>{{ day_row.day }}</td>
+                        {% for slot in day_row.slots %}
+                            <td>
+                                {% if slot.data %}
+                                    {% for entry in slot.data %}
+                                        {{ entry.room_name }}<br>
+                                        {{ entry.course_name }}<br>
+                                        {{ entry.teacher_name }}
+                                    {% endfor %}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% endfor %}
+</body>
+</html>

@@ -14,6 +14,11 @@ urlpatterns = [
     # URL for deleting Days, Rooms, and Timeslots
     path('manage_data/', views.manage_days_rooms_timeslots, name='manage_data'),
     path('export_excel/', views.export_excel, name='export_excel'),
+    path('all-classes-timetable-pdf/', views.all_classes_timetable_pdf_view, name='all_classes_timetable_pdf'),
+    path('all-teachers-timetable-pdf/', views.all_teachers_timetable_pdf_view, name='all_teachers_timetable_pdf'),
+    path('all-rooms-timetable-pdf/', views.all_rooms_timetable_pdf_view, name='all_rooms_timetable_pdf'),
+
+
     path('generate_timetable/', views.generate_timetable, name='generate_timetable'),
     path('add_data/', views.add_data, name='add_data'),
     path('timetable/', views.timetable_view, name='timetable'),

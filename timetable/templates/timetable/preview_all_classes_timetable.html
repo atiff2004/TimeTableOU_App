@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Preview All Classes Timetable</title>
+    <style>
+        @media print {
+            .no-print {
+                display: none;
+            }
+        }
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .class-timetable {
+            margin-bottom: 20px;
+            page-break-inside: avoid;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 6px;
+            text-align: center;
+        }
+        th {
+            background-color: #666666;
+            color: white;
+        }
+        td {
+            background-color: #f9f9f9;
+        }
+        .class-header {
+            background-color: #3c4660;
+            color: white;
+            padding: 8px;
+            text-align: center;
+            font-size: 1.2em;
+        }
+        .page-break {
+            page-break-after: always;
+        }
+        .buttons {
+            text-align: center;
+            margin-top: 20px;
+        }
+        .buttons a, .buttons button {
+            margin: 5px;
+            padding: 10px 20px;
+            background-color: #000080;
+            color: #FFFFFF;
+            border: none;
+            text-decoration: none;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        .buttons a:hover, .buttons button:hover {
+            background-color: #333399;
+        }
+    </style>
+</head>
+<body>
+    <h1>All Classes Timetable Preview</h1>
+    
+    {% for shift, classes in timetable_data.items %}
+        {% for class_data in classes %}
+            <div class="class-timetable">
+                <div class="class-header">{{ class_data.class.name }} {{ class_data.class.semester.name }}{{ class_data.class.section }}</div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Days / Timeslots</th>
+                            {% for timeslot in class_data.timetable.timetable.slots %}
+                                <th>{{ timeslot }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for day_row in class_data.timetable.timetable %}
+                        <tr>
+                            <td><strong>{{ day_row.day }}</strong></td>
+                            {% for slot in day_row.slots %}
+                                <td>
+                                    {% if slot %}
+                                        {% for entry in slot %}
+                                            <div>
+                                                <strong>{{ entry.room_name }}</strong><br>
+                                                {{ entry.course_name }}<br>
+                                                {{ entry.teacher_name }}
+                                            </div>
+                                        {% endfor %}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% if forloop.counter|divisibleby:2 and not forloop.last %}
+                <div class="page-break"></div>
+            {% endif %}
+        {% endfor %}
+    {% endfor %}
+    
+    <div class="buttons no-print">
+        <a href="{% url download_url %}">Download PDF</a>
+        <button onclick="window.print()">Print</button>
+    </div>
+</body>
+</html>

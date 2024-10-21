@@ -259,7 +259,7 @@ def assign_schedule(request):
 
                 if credit_hours == 2 and lab_crh == 0:
                     # 1 slot strictly in 'lab_slot'
-                    if timeslot.category != 'lab_slot':
+                    if timeslot.category == 'lab_slotsss':
                         form.add_error(None, "This course requires 1 slot strictly in 'lab_slot' for 2 credit hours with no lab hours.")
                     else:
                         # Save schedule if condition is met
@@ -269,7 +269,7 @@ def assign_schedule(request):
                 elif credit_hours == 2 and lab_crh == 1:
                     # 2 slots: 1 in 'lab_slot' and the other in 'lec_slot' or 'lab_slot'
                     existing_slots_count = Schedule.objects.filter(course_assignment=course_assign).count()
-                    if existing_slots_count == 0 and timeslot.category == 'lab_slot':
+                    if existing_slots_count == 0 and timeslot.category != 'lab_slotsss':
                         Schedule.objects.create(day=day, room=room, timeslot=timeslot, course_assignment=course_assign)
                         return redirect('timetable')
                     elif existing_slots_count == 1 and timeslot.category in ['lec_slot', 'lab_slot']:
@@ -1919,3 +1919,165 @@ def generate_timetable(request):
 
     return redirect('timetable')  # Redirect to the timetable page after successful schedule generation
 
+from django.shortcuts import render
+from django.http import HttpResponse
+from django.template.loader import get_template
+from xhtml2pdf import pisa
+from .models import Class, Day, Timeslot, Schedule, Teacher
+
+# Helper function to generate PDF from HTML
+def generate_pdf_class(template_src, context_dict={}):
+    template = get_template(template_src)
+    html = template.render(context_dict)
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = 'attachment; filename="class_timetable.pdf"'
+    pisa_status = pisa.CreatePDF(html, dest=response)
+    if pisa_status.err:
+        return HttpResponse('We had some errors <pre>' + html + '</pre>')
+    return response
+# Helper function to generate PDF from HTML
+def generate_pdf_Teacher(template_src, context_dict={}):
+    template = get_template(template_src)
+    html = template.render(context_dict)
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = 'attachment; filename="Teacher_timetable.pdf"'
+    pisa_status = pisa.CreatePDF(html, dest=response)
+    if pisa_status.err:
+        return HttpResponse('We had some errors <pre>' + html + '</pre>')
+    return response
+def generate_pdf_rooms(template_src, context_dict={}):
+    template = get_template(template_src)
+    html = template.render(context_dict)
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = 'attachment; filename="Rooms_timetable.pdf"'
+    pisa_status = pisa.CreatePDF(html, dest=response)
+    if pisa_status.err:
+        return HttpResponse('We had some errors <pre>' + html + '</pre>')
+    return response
+
+# View to generate PDF for all class timetables
+def all_classes_timetable_pdf_view(request):
+    classes = Class.objects.all()
+    days = Day.objects.all()
+    timeslots = Timeslot.objects.all()
+
+    # Prepare timetable data for each class
+    timetable_data = {}
+    for class_instance in classes:
+        class_data = []
+        for day in days:
+            day_row = {'day': day.name, 'slots': []}
+            # Filter the timeslots based on the class shift
+            filtered_timeslots = timeslots.filter(shift=class_instance.shift)
+            for timeslot in filtered_timeslots:
+                schedules = Schedule.objects.filter(
+                    course_assignment__class_assigned=class_instance,
+                    day=day,
+                    timeslot=timeslot
+                )
+                slot_data = []
+                for schedule in schedules:
+                    slot_data.append({
+                        'room_name': schedule.room.name,
+                        'course_name': schedule.course_assignment.course.short_name,
+                        'teacher_name': schedule.course_assignment.teacher.name if schedule.course_assignment.teacher else 'TBA',
+                        'timeslot': timeslot  # Add timeslot information for the template
+                    })
+                day_row['slots'].append({'timeslot': timeslot, 'data': slot_data})  # Store both timeslot and slot data
+            class_data.append(day_row)
+        timetable_data[class_instance] = class_data
+
+    context = {
+        'timetable_data': timetable_data,
+        'days': days,
+        'classes': classes  # Timeslots are now filtered per class
+    }
+    return generate_pdf_class('timetable/all_classes_timetable_pdf.html', context)
+
+# View to generate PDF for all teacher timetables (similar logic applied here)
+# View to generate PDF for all teacher timetables
+def all_teachers_timetable_pdf_view(request):
+    teachers = Teacher.objects.all()  # Get all teachers
+    days = Day.objects.all()  # Get all days of the week
+    timeslots = Timeslot.objects.all()  # Get all timeslots
+
+    # Prepare timetable data for each teacher
+    timetable_data = {}
+    for teacher in teachers:
+        teacher_data = []
+        for day in days:
+            day_row = {'day': day.name, 'slots': []}
+            for timeslot in timeslots:
+                # Get all schedules for this teacher, day, and timeslot
+                schedules = Schedule.objects.filter(
+                    course_assignment__teacher=teacher,
+                    day=day,
+                    timeslot=timeslot
+                )
+                slot_data = []
+                if schedules.exists():
+                    for schedule in schedules:
+                        slot_data.append({
+                            'room_name': schedule.room.name,
+                            'course_name': schedule.course_assignment.course.short_name,
+                            'class_name': f"{schedule.course_assignment.class_assigned.name} {schedule.course_assignment.class_assigned.semester.name}{schedule.course_assignment.class_assigned.section}"
+                        })
+                # Append either the slot data or an empty list (for an empty slot)
+                day_row['slots'].append({'timeslot': timeslot, 'data': slot_data})
+            teacher_data.append(day_row)  # Append the entire day row for this teacher
+        timetable_data[teacher] = teacher_data  # Assign teacher's timetable to the main timetable data
+
+    context = {
+        'timetable_data': timetable_data,
+        'days': days,
+        'timeslots': timeslots,
+        'teachers': teachers
+    }
+    
+    # Generate the PDF using the template and the timetable data
+    return generate_pdf_Teacher('timetable/all_teachers_timetable_pdf.html', context)
+
+def all_rooms_timetable_pdf_view(request):
+    rooms = Room.objects.all()  # Get all rooms
+    days = Day.objects.all()  # Get all days of the week
+    timeslots = Timeslot.objects.all()  # Get all timeslots
+
+    # Prepare timetable data for each room
+    timetable_data = {}
+    for room in rooms:
+        room_data = []
+        for day in days:
+            day_row = {'day': day.name, 'slots': []}
+            for timeslot in timeslots:
+                # Get all schedules for this room, day, and timeslot
+                schedules = Schedule.objects.filter(
+                    room=room,
+                    day=day,
+                    timeslot=timeslot
+                )
+                slot_data = []
+                if schedules.exists():
+                    for schedule in schedules:
+                        # Safely retrieve related objects, and handle cases where they might be None
+                        course_name = schedule.course_assignment.course.short_name if schedule.course_assignment.course else 'N/A'
+                        class_name = f"{schedule.course_assignment.class_assigned.name} {schedule.course_assignment.class_assigned.semester.name}{schedule.course_assignment.class_assigned.section}" if schedule.course_assignment.class_assigned else 'N/A'
+                        teacher_name = schedule.course_assignment.teacher.name if schedule.course_assignment.teacher else 'N/A'
+
+                        slot_data.append({
+                            'course_name': course_name,
+                            'class_name': class_name,
+                            'teacher_name': teacher_name
+                        })
+                # Append either the slot data or an empty list (for an empty slot)
+                day_row['slots'].append({'timeslot': timeslot, 'data': slot_data})
+            room_data.append(day_row)  # Append the entire day row for this room
+        timetable_data[room] = room_data  # Assign room's timetable to the main timetable data
+
+    context = {
+        'timetable_data': timetable_data,
+        'days': days,
+        'timeslots': timeslots,
+        'rooms': rooms
+    }
+
+    return generate_pdf_rooms('timetable/all_rooms_timetable_pdf.html', context)

@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>All Rooms Timetable</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 20mm;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        .room-timetable {
+            margin-bottom: 20px;
+            page-break-after: always; /* Ensure each table starts on a new page */
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+            font-size: 12px; /* Reduced font size for compactness */
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 5px; /* Decreased padding for a tighter look */
+            text-align: center;
+            vertical-align: middle;
+        }
+        th {
+            background-color: #666666;
+            color: white;
+            font-size: 14px; /* Larger font for headers */
+        }
+        td {
+            background-color: #f9f9f9;
+            font-size: 12px; /* Adjusted font size for better readability */
+            font-weight: normal; /* Ensure text is not bold */
+            white-space: nowrap; /* Prevent text from breaking into new lines */
+        }
+        .room-header {
+            background-color: #3c4660;
+            color: white;
+            padding: 12px;
+            text-align: center;
+            font-size: 16px; /* Increased font size for the room name header */
+        }
+    </style>
+</head>
+<body>
+    {% for room, room_timetable in timetable_data.items %}
+        <div class="room-timetable">
+            <div class="room-header">
+                Timetable for {{ room.name }}
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Days / Timeslots</th>
+                        {% for timeslot in room_timetable.0.slots %} {# Display timeslots #}
+                            <th>{{ timeslot.timeslot.slot }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for day_row in room_timetable %}
+                    <tr>
+                        <td>{{ day_row.day }}</td>
+                        {% for slot in day_row.slots %}
+                            <td>
+                                {% if slot.data %}
+                                    {% for entry in slot.data %}
+                                        {{ entry.class_name }} <br> {{ entry.course_name }} <br> {{ entry.teacher_name }}
+                                    {% endfor %}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% endfor %}
+</body>
+</html>

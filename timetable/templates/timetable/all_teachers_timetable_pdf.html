@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>All Teachers Timetable</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 20mm;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        .teacher-timetable {
+            margin-bottom: 20px;
+            page-break-after: always; /* Ensure each table is on its own page */
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+            font-size: 12px; /* Decreased font size for better compactness */
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 5px; /* Decreased padding for a tighter look */
+            text-align: center;
+            vertical-align: middle;
+        }
+        th {
+            background-color: #666666;
+            color: white;
+            font-size: 14px; /* Larger font for headers */
+        }
+        td {
+            background-color: #f9f9f9;
+            font-size: 12px; /* Adjusted font size for better readability */
+            font-weight: normal; /* Ensure text is not bold */
+            white-space: nowrap; /* Prevent text from breaking into new lines */
+        }
+        .teacher-header {
+            background-color: #3c4660;
+            color: white;
+            padding: 12px;
+            text-align: center;
+            font-size: 16px; /* Increased font size for the teacher name header */
+        }
+    </style>
+</head>
+<body>
+    {% for teacher, teacher_timetable in timetable_data.items %}
+        <div class="teacher-timetable">
+            <div class="teacher-header">
+                Timetable for {{ teacher.name }}
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Days / Timeslots</th>
+                        {% for timeslot in teacher_timetable.0.slots %} {# Display timeslots #}
+                            <th>{{ timeslot.timeslot.slot }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for day_row in teacher_timetable %}
+                    <tr>
+                        <td>{{ day_row.day }}</td>
+                        {% for slot in day_row.slots %}
+                            <td>
+                                {% if slot.data %}
+                                    {% for entry in slot.data %}
+                                        {{ entry.class_name }} <br> {{ entry.course_name }}<br>  {{ entry.room_name }}
+                                    {% endfor %}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% endfor %}
+</body>
+</html>
