@@ -15,6 +15,8 @@ urlpatterns = [
     path('manage_data/', views.manage_days_rooms_timeslots, name='manage_data'),
     path('export_excel/', views.export_excel, name='export_excel'),
     path('all-classes-timetable-pdf/', views.all_classes_timetable_pdf_view, name='all_classes_timetable_pdf'),
+    path('all-days-timetable-pdf/', views.all_days_timetable_pdf_view, name='all_days_timetable_pdf'),
+
     path('all-teachers-timetable-pdf/', views.all_teachers_timetable_pdf_view, name='all_teachers_timetable_pdf'),
     path('all-rooms-timetable-pdf/', views.all_rooms_timetable_pdf_view, name='all_rooms_timetable_pdf'),
 

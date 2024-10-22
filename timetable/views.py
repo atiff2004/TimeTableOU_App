@@ -653,14 +653,7 @@ def swap_schedules(request):
                     ).exclude(course_assignment__course=course_assign_b.course).exists():
                     error_message = "Teacher for Schedule B is already assigned to another course at this time."
 
-                # Check class availability for Schedule A
-                elif Schedule.objects.filter(
-                        day=day_b_instance, 
-                        timeslot=timeslot_b_instance, 
-                        course_assignment__class_assigned=course_assign_a.class_assigned
-                    ).exists():
-                    error_message = "Class for Schedule A is already assigned to a different room at this time."
-
+            
                 # Check class availability for Schedule B
                 elif Schedule.objects.filter(
                         day=day_a_instance, 
@@ -1841,83 +1834,84 @@ def evaluate(individual):
 
 # Generate the timetable
 def generate_timetable(request):
-    # Retrieve all available days, rooms, and timeslots from the database
-    days = list(Day.objects.all())
-    rooms = list(Room.objects.all())
-    timeslots = list(Timeslot.objects.all())
-    course_assignments = list(CourseAssignment.objects.all())
+    pass
+#     # Retrieve all available days, rooms, and timeslots from the database
+#     days = list(Day.objects.all())
+#     rooms = list(Room.objects.all())
+#     timeslots = list(Timeslot.objects.all())
+#     course_assignments = list(CourseAssignment.objects.all())
 
-    # Create population for GA (random schedules)
-    population_size = 100
-    population = []
+#     # Create population for GA (random schedules)
+#     population_size = 100
+#     population = []
     
-    for _ in range(population_size):
-        individual = []
-        for course_assignment in course_assignments:
-            lecture_slots, lab_slots = calculate_slots(course_assignment.course)
+#     for _ in range(population_size):
+#         individual = []
+#         for course_assignment in course_assignments:
+#             lecture_slots, lab_slots = calculate_slots(course_assignment.course)
 
-            # Assign lecture and lab slots for the course
-            for _ in range(lecture_slots + lab_slots):
-                day = random.choice(days)
-                room = random.choice(rooms)
-                timeslot = random.choice(timeslots)
-                individual.append([day, room, timeslot, course_assignment])
+#             # Assign lecture and lab slots for the course
+#             for _ in range(lecture_slots + lab_slots):
+#                 day = random.choice(days)
+#                 room = random.choice(rooms)
+#                 timeslot = random.choice(timeslots)
+#                 individual.append([day, room, timeslot, course_assignment])
         
-        population.append(creator.Individual(individual))
+#         population.append(creator.Individual(individual))
     
-    # Genetic algorithm for optimization
-    toolbox.register("mate", tools.cxTwoPoint)
-    toolbox.register("mutate", tools.mutShuffleIndexes, indpb=0.05)
-    toolbox.register("select", tools.selTournament, tournsize=3)
-    toolbox.register("evaluate", evaluate)
+#     # Genetic algorithm for optimization
+#     toolbox.register("mate", tools.cxTwoPoint)
+#     toolbox.register("mutate", tools.mutShuffleIndexes, indpb=0.05)
+#     toolbox.register("select", tools.selTournament, tournsize=3)
+#     toolbox.register("evaluate", evaluate)
 
-    # Evolution process
-    generations = 50
-    for gen in range(generations):
-        offspring = toolbox.select(population, len(population))
-        offspring = list(map(toolbox.clone, offspring))
+#     # Evolution process
+#     generations = 50
+#     for gen in range(generations):
+#         offspring = toolbox.select(population, len(population))
+#         offspring = list(map(toolbox.clone, offspring))
 
-        # Apply crossover and mutation
-        for child1, child2 in zip(offspring[::2], offspring[1::2]):
-            if random.random() < 0.5:  # Crossover probability
-                toolbox.mate(child1, child2)
-                del child1.fitness.values
-                del child2.fitness.values
+#         # Apply crossover and mutation
+#         for child1, child2 in zip(offspring[::2], offspring[1::2]):
+#             if random.random() < 0.5:  # Crossover probability
+#                 toolbox.mate(child1, child2)
+#                 del child1.fitness.values
+#                 del child2.fitness.values
         
-        for mutant in offspring:
-            if random.random() < 0.2:  # Mutation probability
-                toolbox.mutate(mutant)
-                del mutant.fitness.values
+#         for mutant in offspring:
+#             if random.random() < 0.2:  # Mutation probability
+#                 toolbox.mutate(mutant)
+#                 del mutant.fitness.values
 
-        # Evaluate fitness of new individuals
-        invalid_ind = [ind for ind in offspring if not ind.fitness.valid]
-        fitnesses = map(toolbox.evaluate, invalid_ind)
-        for ind, fit in zip(invalid_ind, fitnesses):
-            ind.fitness.values = fit
+#         # Evaluate fitness of new individuals
+#         invalid_ind = [ind for ind in offspring if not ind.fitness.valid]
+#         fitnesses = map(toolbox.evaluate, invalid_ind)
+#         for ind, fit in zip(invalid_ind, fitnesses):
+#             ind.fitness.values = fit
         
-        # Replace the old population with the new one
-        population[:] = offspring
+#         # Replace the old population with the new one
+#         population[:] = offspring
 
-    # Select the best individual (schedule)
-    best_schedule = tools.selBest(population, 1)[0]
+#     # Select the best individual (schedule)
+#     best_schedule = tools.selBest(population, 1)[0]
 
-    # Final validation to ensure no conflicts
-    for schedule in best_schedule:
-        day, room, timeslot, course_assignment = schedule
-        if Schedule.objects.filter(day=day, room=room, timeslot=timeslot).exists():
-            return render(request, 'timetable/error.html', {'error': 'Room conflict detected'})
-        if Schedule.objects.filter(day=day, timeslot=timeslot, course_assignment__teacher=course_assignment.teacher).exclude(course_assignment__course=course_assignment.course).exists():
-            return render(request, 'timetable/error.html', {'error': 'Teacher conflict detected'})
-        # In your generate_timetable function
-        if Schedule.objects.filter(day=day, timeslot=timeslot, course_assignment__class_assigned=class_assigned).exists():
-            print(f"Conflict detected for Class: {class_assigned}, Day: {day}, Timeslot: {timeslot}")
-            raise ValueError("Class conflict detected")
+#     # Final validation to ensure no conflicts
+#     for schedule in best_schedule:
+#         day, room, timeslot, course_assignment = schedule
+#         if Schedule.objects.filter(day=day, room=room, timeslot=timeslot).exists():
+#             return render(request, 'timetable/error.html', {'error': 'Room conflict detected'})
+#         if Schedule.objects.filter(day=day, timeslot=timeslot, course_assignment__teacher=course_assignment.teacher).exclude(course_assignment__course=course_assignment.course).exists():
+#             return render(request, 'timetable/error.html', {'error': 'Teacher conflict detected'})
+#         # In your generate_timetable function
+#         if Schedule.objects.filter(day=day, timeslot=timeslot, course_assignment__class_assigned=class_assigned).exists():
+#             print(f"Conflict detected for Class: {class_assigned}, Day: {day}, Timeslot: {timeslot}")
+#             raise ValueError("Class conflict detected")
 
 
         # Save the schedule
-        Schedule.objects.create(day=day, room=room, timeslot=timeslot, course_assignment=course_assignment)
+    #    Schedule.objects.create(day=day, room=room, timeslot=timeslot, course_assignment=course_assignment)
 
-    return redirect('timetable')  # Redirect to the timetable page after successful schedule generation
+    # return redirect('timetable')  # Redirect to the timetable page after successful schedule generation
 
 from django.shortcuts import render
 from django.http import HttpResponse
@@ -1950,6 +1944,15 @@ def generate_pdf_rooms(template_src, context_dict={}):
     html = template.render(context_dict)
     response = HttpResponse(content_type='application/pdf')
     response['Content-Disposition'] = 'attachment; filename="Rooms_timetable.pdf"'
+    pisa_status = pisa.CreatePDF(html, dest=response)
+    if pisa_status.err:
+        return HttpResponse('We had some errors <pre>' + html + '</pre>')
+    return response
+def generate_pdf_days(template_src, context_dict={}):
+    template = get_template(template_src)
+    html = template.render(context_dict)
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = 'attachment; filename="days_timetable.pdf"'
     pisa_status = pisa.CreatePDF(html, dest=response)
     if pisa_status.err:
         return HttpResponse('We had some errors <pre>' + html + '</pre>')
@@ -2081,3 +2084,52 @@ def all_rooms_timetable_pdf_view(request):
     }
 
     return generate_pdf_rooms('timetable/all_rooms_timetable_pdf.html', context)
+
+def all_days_timetable_pdf_view(request):
+    days = Day.objects.all()  # Get all days
+    rooms = Room.objects.all()  # Get all rooms
+    timeslots = Timeslot.objects.all()  # Get all timeslots
+
+    # Prepare timetable data for each day
+    timetable_data = {}
+    for day in days:
+        day_data = []
+        for room in rooms:
+            room_row = {'room': room.name, 'slots': []}
+            for timeslot in timeslots:
+                # Get all schedules for this day, room, and timeslot
+                schedules = Schedule.objects.filter(
+                    room=room,
+                    day=day,
+                    timeslot=timeslot
+                )
+                slot_data = []
+                if schedules.exists():
+                    for schedule in schedules:
+                        # Safely retrieve related objects, and handle cases where they might be None
+                        course_name = schedule.course_assignment.course.short_name if schedule.course_assignment.course else 'N/A'
+                        class_name = (
+                            f"{schedule.course_assignment.class_assigned.name} "
+                            f"{schedule.course_assignment.class_assigned.semester.name} "
+                            f"{schedule.course_assignment.class_assigned.section}"
+                        ) if schedule.course_assignment.class_assigned else 'N/A'
+                        teacher_name = schedule.course_assignment.teacher.name if schedule.course_assignment.teacher else 'N/A'
+
+                        slot_data.append({
+                            'course_name': course_name,
+                            'class_name': class_name,
+                            'teacher_name': teacher_name
+                        })
+                # Append either the slot data or an empty list (for an empty slot)
+                room_row['slots'].append({'timeslot': timeslot, 'data': slot_data})
+            day_data.append(room_row)  # Append the entire room row for this day
+        timetable_data[day] = day_data  # Assign day's timetable to the main timetable data
+
+    context = {
+        'timetable_data': timetable_data,
+        'days': days,
+        'timeslots': timeslots,
+        'rooms': rooms
+    }
+
+    return generate_pdf_days('timetable/all_days_timetable_pdf.html', context)

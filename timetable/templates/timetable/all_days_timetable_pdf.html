@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Day-Wise Timetable</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 10mm; /* Reduced margin to fit more content */
+        }
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        .day-timetable {
+            margin-bottom: 10px;
+            page-break-after: always; /* Ensure each table starts on a new page */
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 10px; /* Reduced margin between tables */
+            font-size: 10px; /* Further reduced font size for compactness */
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 3px; /* Further reduced padding to fit more content */
+            text-align: center;
+            vertical-align: middle;
+        }
+        th {
+            background-color: #666666;
+            color: white;
+            font-size: 12px; /* Adjusted font size for headers */
+        }
+        td {
+            background-color: #f9f9f9;
+            font-size: 10px; /* Reduced font size for table content */
+            font-weight: normal; /* Ensure text is not bold */
+            white-space: nowrap; /* Prevent text from breaking into new lines */
+        }
+        .day-header {
+            background-color: #3c4660;
+            color: white;
+            padding: 10px;
+            text-align: center;
+            font-size: 14px; /* Adjusted font size for the day name header */
+        }
+    </style>
+</head>
+<body>
+    {% for day, day_timetable in timetable_data.items %}
+        <div class="day-timetable">
+            <div class="day-header">
+                Timetable for {{ day.name }}
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Room / Timeslots</th>
+                        {% for timeslot in day_timetable.0.slots %} {# Display timeslots #}
+                            <th>{{ timeslot.timeslot.slot }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for room_row in day_timetable %}
+                    <tr>
+                        <td>{{ room_row.room }}</td>
+                        {% for slot in room_row.slots %}
+                            <td>
+                                {% if slot.data %}
+                                    {% for entry in slot.data %}
+                                        {{ entry.class_name }} <br>{{ entry.course_name }} <br>{{ entry.teacher_name }}
+                                    {% endfor %}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div> <!-- This div will force a new page for each day -->
+    {% endfor %}
+</body>
+</html>
