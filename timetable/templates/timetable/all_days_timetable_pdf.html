@@ -5,7 +5,7 @@
     <style>
         @page {
             size: A4;
-            margin: 10mm; /* Reduced margin to fit more content */
+            margin: 10mm;
         }
         body {
             font-family: Arial, sans-serif;
@@ -14,51 +14,60 @@
         }
         .day-timetable {
             margin-bottom: 10px;
-            page-break-after: always; /* Ensure each table starts on a new page */
+            page-break-after: always; /* Ensure each day starts on a new page */
+            page-break-inside: avoid; /* Prevent table from breaking across pages */
         }
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 10px; /* Reduced margin between tables */
-            font-size: 10px; /* Further reduced font size for compactness */
+            font-size: 10px; /* Compact font size */
+            margin-bottom: 20px;
+            table-layout: fixed; /* Fixed layout to ensure the table fits the page */
         }
         th, td {
-            border: 1px solid #ddd;
-            padding: 3px; /* Further reduced padding to fit more content */
+            border: 2px solid #000; /* Enhanced thick border for better visibility */
+            padding: 4px; /* Reduce padding to fit the table better */
             text-align: center;
-            vertical-align: middle;
+            word-wrap: break-word; /* Ensure long text breaks into new lines */
+        }
+        h3.day-bar {
+            background-color: #3c4660; /* Same background as the table headers */
+            color: #ffffff; /* White text */
+            margin: 0; /* Remove margin to combine with the table */
+            padding: 10px;
+            text-align: center; /* Center the header text */
+            font-size: 18px;
         }
         th {
-            background-color: #666666;
+            background-color: #666666; /* Dark gray background for timeslots row */
             color: white;
-            font-size: 12px; /* Adjusted font size for headers */
+            font-weight: bold;
         }
-        td {
-            background-color: #f9f9f9;
-            font-size: 10px; /* Reduced font size for table content */
-            font-weight: normal; /* Ensure text is not bold */
-            white-space: nowrap; /* Prevent text from breaking into new lines */
-        }
-        .day-header {
-            background-color: #3c4660;
+        .room-cell {
+            background-color: #666666; /* Dark gray background for room names column */
             color: white;
-            padding: 10px;
-            text-align: center;
-            font-size: 14px; /* Adjusted font size for the day name header */
+            font-weight: bold;
+            border: 2px solid #000; /* Ensure the room cell has a solid border */
+        }
+        /* Removed border and box around the schedule information */
+        .schedule-info {
+            margin: 2px 0;
+            padding: 0; /* Removed padding */
+            background-color: transparent; /* Set background to transparent */
+            border: none; /* Removed the border */
         }
     </style>
 </head>
 <body>
+
     {% for day, day_timetable in timetable_data.items %}
         <div class="day-timetable">
-            <div class="day-header">
-                Timetable for {{ day.name }}
-            </div>
-            <table>
+            <h3 class="day-bar">{{ day.name }}</h3> <!-- Centered day header -->
+            <table class="timetable-table">
                 <thead>
                     <tr>
                         <th>Room / Timeslots</th>
-                        {% for timeslot in day_timetable.0.slots %} {# Display timeslots #}
+                        {% for timeslot in day_timetable.0.slots %}
                             <th>{{ timeslot.timeslot.slot }}</th>
                         {% endfor %}
                     </tr>
@@ -66,12 +75,16 @@
                 <tbody>
                     {% for room_row in day_timetable %}
                     <tr>
-                        <td>{{ room_row.room }}</td>
+                        <td class="room-cell">{{ room_row.room }}</td> <!-- Room name in dark gray background -->
                         {% for slot in room_row.slots %}
                             <td>
                                 {% if slot.data %}
                                     {% for entry in slot.data %}
-                                        {{ entry.class_name }} <br>{{ entry.course_name }} <br>{{ entry.teacher_name }}
+                                        <div class="schedule-info">
+                                            <strong>{{ entry.class_name }}</strong><br>
+                                            {{ entry.course_name }}<br>
+                                            {{ entry.teacher_name }}
+                                        </div>
                                     {% endfor %}
                                 {% else %}
                                     -
@@ -82,7 +95,8 @@
                     {% endfor %}
                 </tbody>
             </table>
-        </div> <!-- This div will force a new page for each day -->
+        </div> <!-- Forces new page for each day -->
     {% endfor %}
+
 </body>
 </html>

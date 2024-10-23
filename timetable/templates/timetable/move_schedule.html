@@ -1,0 +1,138 @@
+{% extends 'timetable/base.html' %}
+
+{% block content %}
+<h1 class="my-4 text-center">Move Schedule</h1>
+
+<div class="container">
+    {% if not schedule_info_a %} <!-- First Step: Show selection form only when schedule_info_a is not set -->
+        <form method="POST">
+            {% csrf_token %}
+            
+            <!-- Schedule to Move (Slot A) -->
+            <h3>Move This Slot</h3>
+            <label for="day_a">Day:</label>
+            <select name="day_a" id="day_a" required>
+                <option value="">Select Day</option>
+                {% for day in days %}
+                    <option value="{{ day.id }}" {% if day_a == day.id|stringformat:"s" %}selected{% endif %}>{{ day.name }}</option>
+                {% endfor %}
+            </select>
+            <br>
+
+            <label for="room_a">Room:</label>
+            <select name="room_a" id="room_a" required>
+                <option value="">Select Room</option>
+                {% for room in rooms %}
+                    <option value="{{ room.id }}" {% if room_a == room.id|stringformat:"s" %}selected{% endif %}>{{ room.name }}</option>
+                {% endfor %}
+            </select>
+            <br>
+
+            <label for="timeslot_a">Timeslot:</label>
+            <select name="timeslot_a" id="timeslot_a" required>
+                <option value="">Select Timeslot</option>
+                {% for timeslot in timeslots %}
+                    <option value="{{ timeslot.id }}" {% if timeslot_a == timeslot.id|stringformat:"s" %}selected{% endif %}>{{ timeslot.slot }}</option>
+                {% endfor %}
+            </select>
+            <br>
+
+            <!-- Destination Slot (Slot B) -->
+            <h3>Move To This Slot</h3>
+            <label for="day_b">Day:</label>
+            <select name="day_b" id="day_b" required>
+                <option value="">Select Day</option>
+                {% for day in days %}
+                    <option value="{{ day.id }}" {% if day_b == day.id|stringformat:"s" %}selected{% endif %}>{{ day.name }}</option>
+                {% endfor %}
+            </select>
+            <br>
+
+            <label for="room_b">Room:</label>
+            <select name="room_b" id="room_b" required>
+                <option value="">Select Room</option>
+                {% for room in rooms %}
+                    <option value="{{ room.id }}" {% if room_b == room.id|stringformat:"s" %}selected{% endif %}>{{ room.name }}</option>
+                {% endfor %}
+            </select>
+            <br>
+
+            <label for="timeslot_b">Timeslot:</label>
+            <select name="timeslot_b" id="timeslot_b" required>
+                <option value="">Select Timeslot</option>
+                {% for timeslot in timeslots %}
+                    <option value="{{ timeslot.id }}" {% if timeslot_b == timeslot.id|stringformat:"s" %}selected{% endif %}>{{ timeslot.slot }}</option>
+                {% endfor %}
+            </select>
+            <br>
+
+            <button type="submit" name="check_schedules" class="btn btn-primary">Check Schedule</button>
+        </form>
+
+    {% else %}
+        <!-- Second Step: Show confirmation table when schedule_info_a is available -->
+        <div class="mt-4">
+            <h3>Schedule to Move</h3>
+            <table class="timetable-table">
+                <thead>
+                    <tr>
+                        <th>Room</th>
+                        <th>Timeslot</th>
+                        <th>Class</th>
+                        <th>Course</th>
+                        <th>Teacher</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>{{ schedule_info_a.room.name }}</td>
+                        <td>{{ schedule_info_a.timeslot.slot }}</td>
+                        <td>{{ schedule_info_a.course_assignment.class_assigned.name }}</td>
+                        <td>{{ schedule_info_a.course_assignment.course.short_name }}</td>
+                        <td>{{ schedule_info_a.course_assignment.teacher.name }}</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <!-- Hidden fields to pass the data from the first form -->
+            <form method="POST">
+                {% csrf_token %}
+                <input type="hidden" name="day_a" value="{{ schedule_info_a.day.id }}">
+                <input type="hidden" name="room_a" value="{{ schedule_info_a.room.id }}">
+                <input type="hidden" name="timeslot_a" value="{{ schedule_info_a.timeslot.id }}">
+                <input type="hidden" name="day_b" value="{{ day_b }}">
+                <input type="hidden" name="room_b" value="{{ room_b }}">
+                <input type="hidden" name="timeslot_b" value="{{ timeslot_b }}">
+
+                <button type="submit" name="confirm_move" class="btn btn-success mt-3">Confirm Move</button>
+            </form>
+        </div>
+    {% endif %}
+
+    {% if error_message %}
+        <p class="text-danger">{{ error_message }}</p>
+    {% endif %}
+
+    {% if success_message %}
+        <p class="text-success">{{ success_message }}</p>
+    {% endif %}
+</div>
+
+<style>
+    .timetable-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+    }
+    .timetable-table th, .timetable-table td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: center;
+    }
+    .timetable-table th {
+        background-color: #666666;
+        color: #ffffff;
+    }
+</style>
+
+{% endblock %}

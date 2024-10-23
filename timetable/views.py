@@ -586,6 +586,8 @@ from .models import Schedule, Room, Timeslot, Day
 
 from django import forms  # Import this if you're using forms for validation
 
+from django.db import transaction
+
 def swap_schedules(request):
     schedule_info_a = None
     schedule_info_b = None
@@ -636,38 +638,48 @@ def swap_schedules(request):
                 course_assign_a = schedule_a.course_assignment
                 course_assign_b = schedule_b.course_assignment
 
-                # Validation checks
-                # Check teacher availability for Schedule A
+                # Validation checks, excluding Schedule A and B from conflicts
+                # Check teacher availability for Schedule A's teacher in timeslot B
                 if Schedule.objects.filter(
-                        day=day_b_instance, 
-                        timeslot=timeslot_b_instance, 
+                        day=day_b_instance,
+                        timeslot=timeslot_b_instance,
                         course_assignment__teacher=course_assign_a.teacher
-                    ).exclude(course_assignment__course=course_assign_a.course).exists():
+                    ).exclude(id__in=[schedule_a.id, schedule_b.id]).exists():
                     error_message = "Teacher for Schedule A is already assigned to another course at this time."
 
-                # Check teacher availability for Schedule B
+                # Check teacher availability for Schedule B's teacher in timeslot A
                 elif Schedule.objects.filter(
-                        day=day_a_instance, 
-                        timeslot=timeslot_a_instance, 
+                        day=day_a_instance,
+                        timeslot=timeslot_a_instance,
                         course_assignment__teacher=course_assign_b.teacher
-                    ).exclude(course_assignment__course=course_assign_b.course).exists():
+                    ).exclude(id__in=[schedule_a.id, schedule_b.id]).exists():
                     error_message = "Teacher for Schedule B is already assigned to another course at this time."
 
-            
-                # Check class availability for Schedule B
+                # Check class availability for Schedule A's class in timeslot B
                 elif Schedule.objects.filter(
-                        day=day_a_instance, 
-                        timeslot=timeslot_a_instance, 
+                        day=day_b_instance,
+                        timeslot=timeslot_b_instance,
+                        course_assignment__class_assigned=course_assign_a.class_assigned
+                    ).exclude(id__in=[schedule_a.id, schedule_b.id]).exists():
+                    error_message = "Class for Schedule A is already assigned to a different room at this time."
+
+                # Check class availability for Schedule B's class in timeslot A
+                elif Schedule.objects.filter(
+                        day=day_a_instance,
+                        timeslot=timeslot_a_instance,
                         course_assignment__class_assigned=course_assign_b.class_assigned
-                    ).exists():
+                    ).exclude(id__in=[schedule_a.id, schedule_b.id]).exists():
                     error_message = "Class for Schedule B is already assigned to a different room at this time."
 
                 # If no errors, proceed with the swap
                 else:
                     with transaction.atomic():
+                        # Get an existing shift for temporary timeslot
+                        default_shift = Shift.objects.first()
+
                         # Temporary room and timeslot for swapping
                         temp_room = Room.objects.create(name="TEMP_ROOM")
-                        temp_timeslot = Timeslot.objects.create(slot="TEMP_SLOT")
+                        temp_timeslot = Timeslot.objects.create(slot="TEMP_SLOT", shift=default_shift)
 
                         # Move schedule A to temporary slot
                         schedule_a.room = temp_room
@@ -710,6 +722,95 @@ def swap_schedules(request):
     }
 
     return render(request, 'timetable/swap_schedules.html', context)
+
+def move_schedule(request):
+    schedule_info_a = None
+    error_message = None
+    success_message = None
+
+    if request.method == 'POST':
+        if 'check_schedules' in request.POST:
+            # Get the input data from the form
+            day_a = request.POST.get('day_a')
+            room_a = request.POST.get('room_a')
+            timeslot_a = request.POST.get('timeslot_a')
+
+            day_b = request.POST.get('day_b')
+            room_b = request.POST.get('room_b')
+            timeslot_b = request.POST.get('timeslot_b')
+
+            # Validate the input
+            if not day_a or not room_a or not timeslot_a or not day_b or not room_b or not timeslot_b:
+                error_message = "Please select all fields."
+            else:
+                try:
+                    # Get the schedule A to move
+                    schedule_info_a = Schedule.objects.get(day_id=day_a, room_id=room_a, timeslot_id=timeslot_a)
+                except Schedule.DoesNotExist:
+                    error_message = "The selected schedule does not exist."
+
+        elif 'confirm_move' in request.POST:
+            # Retrieve values from the hidden fields during confirmation
+            day_a = request.POST.get('day_a')
+            room_a = request.POST.get('room_a')
+            timeslot_a = request.POST.get('timeslot_a')
+
+            day_b = request.POST.get('day_b')
+            room_b = request.POST.get('room_b')
+            timeslot_b = request.POST.get('timeslot_b')
+
+            if not day_a or not room_a or not timeslot_a or not day_b or not room_b or not timeslot_b:
+                error_message = "Please select all fields."
+            else:
+                try:
+                    # Fetch the instances
+                    day_a_instance = Day.objects.get(id=day_a)
+                    room_a_instance = Room.objects.get(id=room_a)
+                    timeslot_a_instance = Timeslot.objects.get(id=timeslot_a)
+
+                    day_b_instance = Day.objects.get(id=day_b)
+                    room_b_instance = Room.objects.get(id=room_b)
+                    timeslot_b_instance = Timeslot.objects.get(id=timeslot_b)
+
+                    # Get the schedule A to move
+                    schedule_a = Schedule.objects.get(day=day_a_instance, room=room_a_instance, timeslot=timeslot_a_instance)
+
+                    # Validate that slot B is empty
+                    if Schedule.objects.filter(day=day_b_instance, room=room_b_instance, timeslot=timeslot_b_instance).exists():
+                        error_message = "The destination slot is not empty."
+                    else:
+                        # Move schedule A to slot B
+                        schedule_a.day = day_b_instance
+                        schedule_a.room = room_b_instance
+                        schedule_a.timeslot = timeslot_b_instance
+                        schedule_a.save()
+
+                        success_message = "Schedule successfully moved."
+
+                except Schedule.DoesNotExist:
+                    error_message = "The selected schedule does not exist."
+
+    days = Day.objects.all()
+    rooms = Room.objects.all()
+    timeslots = Timeslot.objects.all()
+
+    context = {
+        'days': days,
+        'rooms': rooms,
+        'timeslots': timeslots,
+        'schedule_info_a': schedule_info_a,
+        'error_message': error_message,
+        'success_message': success_message,
+        'day_a': request.POST.get('day_a', ''),  # Ensure values are carried over
+        'room_a': request.POST.get('room_a', ''),
+        'timeslot_a': request.POST.get('timeslot_a', ''),
+        'day_b': request.POST.get('day_b', ''),
+        'room_b': request.POST.get('room_b', ''),
+        'timeslot_b': request.POST.get('timeslot_b', ''),
+    }
+
+    return render(request, 'timetable/move_schedule.html', context)
+
 
 
 

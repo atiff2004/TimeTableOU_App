@@ -45,6 +45,7 @@ urlpatterns = [
     path('get-course-assignments/', views.get_course_assignments, name='get_course_assignments'),
     path('schedule/delete/', views.delete_schedule, name='delete_schedule'),
     path('swap_schedules/', views.swap_schedules, name='swap_schedules'),
+    path('move-schedule/', views.move_schedule, name='move_schedule'),
     path('assign-course-to-class/', views.assign_course_to_class, name='assign_course_to_class'),
     path('get-classes/<int:department_id>/', views.get_classes, name='get_classes'),
     path('get-courses/<int:department_id>/', views.get_courses, name='get_courses'),

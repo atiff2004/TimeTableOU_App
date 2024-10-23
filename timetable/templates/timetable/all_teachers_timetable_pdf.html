@@ -20,10 +20,10 @@
             width: 100%;
             border-collapse: collapse;
             margin-bottom: 20px;
-            font-size: 12px; /* Decreased font size for better compactness */
+            font-size: 12px; /* Decreased font size for compactness */
         }
         th, td {
-            border: 1px solid #ddd;
+            border: 2px solid #000; /* Enhanced thick border for better visibility */
             padding: 5px; /* Decreased padding for a tighter look */
             text-align: center;
             vertical-align: middle;
@@ -32,6 +32,7 @@
             background-color: #666666;
             color: white;
             font-size: 14px; /* Larger font for headers */
+            font-weight: bold;
         }
         td {
             background-color: #f9f9f9;
@@ -39,12 +40,26 @@
             font-weight: normal; /* Ensure text is not bold */
             white-space: nowrap; /* Prevent text from breaking into new lines */
         }
+        /* Header for the teacher name */
         .teacher-header {
             background-color: #3c4660;
             color: white;
             padding: 12px;
             text-align: center;
             font-size: 16px; /* Increased font size for the teacher name header */
+        }
+        /* First column (Days) with dark background */
+        .day-cell {
+            background-color: #666666;
+            color: white;
+            font-weight: bold;
+            border: 2px solid #000; /* Thicker border for the first column */
+        }
+        /* First row (Timeslots) with dark background */
+        .timeslot-header {
+            background-color: #666666;
+            color: white;
+            font-weight: bold;
         }
     </style>
 </head>
@@ -57,16 +72,16 @@
             <table>
                 <thead>
                     <tr>
-                        <th>Days / Timeslots</th>
+                        <th class="timeslot-header">Days / Timeslots</th>
                         {% for timeslot in teacher_timetable.0.slots %} {# Display timeslots #}
-                            <th>{{ timeslot.timeslot.slot }}</th>
+                            <th class="timeslot-header">{{ timeslot.timeslot.slot }}</th>
                         {% endfor %}
                     </tr>
                 </thead>
                 <tbody>
                     {% for day_row in teacher_timetable %}
                     <tr>
-                        <td>{{ day_row.day }}</td>
+                        <td class="day-cell">{{ day_row.day }}</td> {# First column (Days) with dark background #}
                         {% for slot in day_row.slots %}
                             <td>
                                 {% if slot.data %}

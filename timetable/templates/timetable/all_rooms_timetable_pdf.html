@@ -20,31 +20,47 @@
             width: 100%;
             border-collapse: collapse;
             margin-bottom: 20px;
-            font-size: 12px; /* Reduced font size for compactness */
+            font-size: 12px; /* Reduced font size for the table */
+            border: 2px solid #000; /* Thicker border for the table */
         }
         th, td {
-            border: 1px solid #ddd;
-            padding: 5px; /* Decreased padding for a tighter look */
+            border: 1px solid #000; /* Darker border */
+            padding: 5px; /* Reduced padding for compactness */
             text-align: center;
             vertical-align: middle;
         }
         th {
-            background-color: #666666;
+            background-color: #666666; /* Dark background for the first row */
             color: white;
-            font-size: 14px; /* Larger font for headers */
+            font-size: 14px; /* Reduced font size for headers */
         }
         td {
             background-color: #f9f9f9;
-            font-size: 12px; /* Adjusted font size for better readability */
-            font-weight: normal; /* Ensure text is not bold */
-            white-space: nowrap; /* Prevent text from breaking into new lines */
+            font-size: 12px; /* Reduced font size */
+            font-weight: normal;
+            white-space: nowrap;
         }
+        /* Dark background for the first column (Rooms) with white text */
+        .room-cell {
+            font-weight: bold;
+            background-color: #666666;
+            color: #ffffff;
+            font-size: 14px; /* Reduced font size for the first column */
+        }
+        /* Remove box inside each cell for schedule info */
+        .schedule-info {
+            margin: 5px 0;
+            padding: 5px;
+            border: none; /* No border inside the cell */
+            background-color: #f9f9f9; /* Light background */
+        }
+        /* Styling the room header */
         .room-header {
             background-color: #3c4660;
             color: white;
-            padding: 12px;
+            padding: 10px;
             text-align: center;
-            font-size: 16px; /* Increased font size for the room name header */
+            font-size: 16px; /* Slightly reduced font size for the room name header */
         }
     </style>
 </head>
@@ -52,7 +68,7 @@
     {% for room, room_timetable in timetable_data.items %}
         <div class="room-timetable">
             <div class="room-header">
-                Timetable for {{ room.name }}
+                 {{ room.name }}
             </div>
             <table>
                 <thead>
@@ -66,12 +82,14 @@
                 <tbody>
                     {% for day_row in room_timetable %}
                     <tr>
-                        <td>{{ day_row.day }}</td>
+                        <td class="room-cell">{{ day_row.day }}</td> <!-- Dark gray background for the first column -->
                         {% for slot in day_row.slots %}
                             <td>
                                 {% if slot.data %}
                                     {% for entry in slot.data %}
-                                        {{ entry.class_name }} <br> {{ entry.course_name }} <br> {{ entry.teacher_name }}
+                                        <div class="schedule-info">
+                                            {{ entry.class_name }} <br> {{ entry.course_name }} <br> {{ entry.teacher_name }}
+                                        </div>
                                     {% endfor %}
                                 {% else %}
                                     -

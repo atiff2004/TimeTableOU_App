@@ -20,32 +20,41 @@
             width: 100%;
             border-collapse: collapse;
             margin-bottom: 20px;
-            font-size: 14px; /* Increased font size for better readability */
+            font-size: 12px; /* Reduced font size for compactness */
+            border: 2px solid #000; /* Thicker border for the table */
         }
         th, td {
-            border: 1px solid #ddd;
-            padding: 10px; /* Increased padding for clearer spacing */
+            border: 1px solid #000; /* Darker border */
+            padding: 8px; /* Reduced padding for compactness */
             text-align: center;
+            vertical-align: middle;
         }
+        /* Dark background for the first row (Timeslots) with white text */
         th {
             background-color: #666666;
             color: white;
-            font-size: 16px; /* Larger font for headers */
+            font-size: 14px; /* Reduced font size for headers */
+        }
+        /* Dark background for the first column (Days) with white text */
+        .day-cell {
+            font-weight: bold;
+            background-color: #666666;
+            color: #ffffff;
+            font-size: 14px; /* Larger font size for the first column */
         }
         td {
             background-color: #f9f9f9;
-            font-size: 14px; /* Increased font size without bold text */
-            font-weight: normal; /* Ensure text is not bold */
+            font-size: 12px; /* Reduced font size */
+            font-weight: normal;
+            white-space: nowrap;
         }
+        /* Style for the class header */
         .class-header {
             background-color: #3c4660;
             color: white;
-            padding: 12px;
+            padding: 10px;
             text-align: center;
-            font-size: 18px; /* Increased font size for the class name header */
-            position: sticky; /* Keeps the header together with the table */
-            top: 0;
-            z-index: 1; /* Ensures the header stays on top */
+            font-size: 16px; /* Reduced font size for the class name header */
         }
     </style>
 </head>
@@ -58,7 +67,7 @@
             <table>
                 <thead>
                     <tr>
-                        <th>Days / Timeslots</th>
+                        <th>Days / Timeslots</th> <!-- Dark background for the first row -->
                         {% for timeslot in class_timetable.0.slots %}  {# Display timeslots based on the class shift #}
                             <th>{{ timeslot.timeslot.slot }}</th>
                         {% endfor %}
@@ -67,7 +76,7 @@
                 <tbody>
                     {% for day_row in class_timetable %}
                     <tr>
-                        <td>{{ day_row.day }}</td>
+                        <td class="day-cell">{{ day_row.day }}</td> <!-- Dark background for the first column -->
                         {% for slot in day_row.slots %}
                             <td>
                                 {% if slot.data %}
