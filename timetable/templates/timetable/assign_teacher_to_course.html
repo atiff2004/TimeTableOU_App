@@ -3,10 +3,11 @@
 
 {% block content %}
 <div class="container">
-    <h2 class="text-center mb-4">Assign Teacher to Class</h2>
+    <h2 class="text-center mb-4">Assign Teacher or Lab to Class</h2>
     <form method="post" class="form-container">
         {% csrf_token %}
 
+        <!-- Department Selection -->
         <div class="form-row justify-content-center">
             <div class="form-group col-md-4">
                 <label for="id_department">Select Department:</label>
@@ -16,9 +17,11 @@
                         <option value="{{ department.id }}">{{ department.name }}</option>
                     {% endfor %}
                 </select>
-            </div></div>
+            </div>
+        </div>
 
-            <div class="form-row justify-content-center">
+        <!-- Semester Selection -->
+        <div class="form-row justify-content-center">
             <div class="form-group col-md-4">
                 <label for="id_semester">Select Semester:</label>
                 <select id="id_semester" name="semester" class="form-control" onchange="loadCourseClassPairs()">
@@ -30,6 +33,7 @@
             </div>
         </div>
 
+        <!-- Class and Course Selection -->
         <div class="form-row justify-content-center">
             <div class="form-group col-md-4">
                 <label for="id_course_assignment">Select Class:</label>
@@ -39,19 +43,35 @@
             </div>
         </div>
 
+        <!-- Assignment Type Selection -->
         <div class="form-row justify-content-center">
             <div class="form-group col-md-4">
-                <label for="id_teacher">Select Teacher:</label>
-                <select id="id_teacher" name="teacher" class="form-control">
-                    {% for teacher in form.teacher.field.queryset %}
-                        <option value="{{ teacher.id }}">{{ teacher.name }}</option>
-                    {% endfor %}
+                <label for="id_assignment_type">Assignment Type:</label>
+                <select id="id_assignment_type" name="assignment_type" class="form-control" onchange="toggleTeacherField()">
+                    <option value="Lecture">Lecture</option>
+                    <option value="Lab">Lab</option>
                 </select>
             </div>
         </div>
 
+        <!-- Teacher Selection (conditionally shown) -->
+<!-- Teacher Selection (conditionally shown) -->
+<div class="form-row justify-content-center" id="teacher-field" style="display: none;">
+    <div class="form-group col-md-4">
+        <label for="id_teacher" class="w-100">Select Teacher (only for Lecture):</label>
+        <select id="id_teacher" name="teacher" class="form-control">
+            {% for teacher in form.teacher.field.queryset %}
+                <option value="{{ teacher.id }}">{{ teacher.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+</div>
+
+
+
+        <!-- Submit Button -->
         <div class="form-row justify-content-center">
-            <button type="submit" class="btn btn-primary">Assign Teacher</button>
+            <button type="submit" class="btn btn-primary">Assign</button>
         </div>
     </form><br><br>
 </div>
@@ -78,6 +98,31 @@
             });
         }
     }
+
+    function toggleTeacherField() {
+        const assignmentType = document.getElementById('id_assignment_type').value;
+        const teacherField = document.getElementById('teacher-field');
+
+        // Hide teacher field if "Lab" is selected
+        if (assignmentType === "Lab") {
+            teacherField.style.display = "none";
+        } else {
+            teacherField.style.display = "block";
+        }
+    }
+
+    document.addEventListener("DOMContentLoaded", function() {
+        toggleTeacherField(); // Initialize field visibility on page load
+    });
+    
+    function toggleTeacherField() {
+        const assignmentType = document.getElementById('id_assignment_type').value;
+        const teacherField = document.getElementById('teacher-field');
+    
+        // Show or hide the teacher field based on "Lecture" or "Lab" selection
+        teacherField.style.display = (assignmentType === "Lecture") ? "flex" : "none";
+    }
+    
 </script>
 
 {% endblock %}

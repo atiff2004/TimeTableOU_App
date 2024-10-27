@@ -173,7 +173,8 @@ class TeacherAssignmentForm(forms.Form):
     department = forms.ModelChoiceField(queryset=Department.objects.all(), required=True, widget=forms.Select(attrs={'class': 'form-control'}))
     semester = forms.ModelChoiceField(queryset=Semester.objects.all(), required=True, widget=forms.Select(attrs={'class': 'form-control'}))
     course_assignment = forms.ModelMultipleChoiceField(queryset=CourseAssignment.objects.none(), required=True, widget=forms.CheckboxSelectMultiple)
-    teacher = forms.ModelChoiceField(queryset=Teacher.objects.all(), required=True, widget=forms.Select(attrs={'class': 'form-control'}))
+    teacher = forms.ModelChoiceField(queryset=Teacher.objects.all(), required=False, widget=forms.Select(attrs={'class': 'form-control'}))  # Allow teacher to be optional
+    assignment_type = forms.ChoiceField(choices=CourseAssignment.ASSIGNMENT_TYPES, required=True, widget=forms.Select(attrs={'class': 'form-control'}))  # Field for Lecture or Lab
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -193,6 +194,7 @@ class TeacherAssignmentForm(forms.Form):
                 self.fields['course_assignment'].queryset = CourseAssignment.objects.none()
         else:
             self.fields['course_assignment'].queryset = CourseAssignment.objects.none()
+
 
 
 class ScheduleForm(forms.Form):
@@ -267,3 +269,32 @@ class ScheduleSwapForm(forms.Form):
             raise forms.ValidationError("One or both schedules do not exist.")
 
         return cleaned_data
+
+class LabScheduleForm(forms.Form):
+    day = forms.ModelChoiceField(queryset=Day.objects.all(), label='Day', required=True)
+    room = forms.ModelChoiceField(queryset=Room.objects.all(), label='Room', required=True)
+    timeslot = forms.ModelChoiceField(queryset=Timeslot.objects.all(), label='Timeslot', required=True)
+
+    department = forms.ModelChoiceField(queryset=Department.objects.all(), label='Department', required=True)
+    semester = forms.ModelChoiceField(queryset=Semester.objects.all(), label='Semester', required=True)
+
+    class_select = forms.ModelChoiceField(queryset=Class.objects.none(), label='Class', required=True)
+    course_assignment = forms.ModelChoiceField(queryset=CourseAssignment.objects.none(), label='Lab Course Assignment', required=True)
+
+    def __init__(self, *args, **kwargs):
+        department_id = kwargs.pop('department_id', None)
+        semester_id = kwargs.pop('semester_id', None)
+        class_id = kwargs.pop('class_id', None)
+        super().__init__(*args, **kwargs)
+
+        # Set default styles for fields
+        for field in self.fields.values():
+            field.widget.attrs.update({'class': 'form-control'})
+
+        # Filter classes based on the selected department and semester
+        if department_id and semester_id:
+            self.fields['class_select'].queryset = Class.objects.filter(department_id=department_id, semester_id=semester_id)
+
+        # Filter course assignments for labs only, based on the selected class
+        if class_id:
+            self.fields['course_assignment'].queryset = CourseAssignment.objects.filter(class_assigned_id=class_id, type='Lab')

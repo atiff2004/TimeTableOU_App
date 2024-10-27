@@ -14,27 +14,21 @@
         padding: 8px;
         text-align: center;
     }
-
     h3.day-bar {
-        background-color: #3c4660; /* Same background as the table headers */
-        color: #ffffff; /* White text */
-        margin-bottom: 0; /* Remove bottom margin to combine with the table */
-        padding: 10px; /* Optional: Add padding for spacing */
+        background-color: #3c4660;
+        color: #ffffff;
+        margin-bottom: 0;
+        padding: 10px;
     }
-
-    /* Black color for the first row with white text */
     .timetable-table th {
-        background-color: #666666; /* Black background color */
-        color: #ffffff; /* White text color */
+        background-color: #666666;
+        color: #ffffff;
     }
-
-    /* Black color for the first column with white text */
     .room-cell {
         font-weight: bold;
-        background-color: #666666; /* Black background color */
-        color: #ffffff; /* White text color */
+        background-color: #666666;
+        color: #ffffff;
     }
-
     .schedule-info {
         margin: 5px 0;
         padding: 5px;
@@ -55,18 +49,13 @@
     <tbody>
         {% for day_row in timetable_data %}
         <tr>
-            <td class="room-cell">
-                <br>
-                {{ day_row.day }}<br>
-                <br>
-                
-            </td>
+            <td class="room-cell">{{ day_row.day }}</td>
             {% for slot in day_row.slots %}
                 <td>
                     {% if slot %}
                         {% for entry in slot %}
                             <div class="schedule-info">
-                            <strong>{{ entry.class_name }} </strong><br>
+                                <strong>{{ entry.class_name }}</strong><br>
                                 {{ entry.course_name }}<br>
                                 {{ entry.room_name }}
                             </div>

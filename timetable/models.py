@@ -79,16 +79,21 @@ class Day(models.Model):
 
 
 class CourseAssignment(models.Model):
+    ASSIGNMENT_TYPES = [
+        ('Lecture', 'Lecture'),
+        ('Lab', 'Lab'),
+    ]
     class_assigned = models.ForeignKey(Class, on_delete=models.CASCADE)
     course = models.ForeignKey(Course, on_delete=models.CASCADE)
-    teacher = models.ForeignKey(Teacher, on_delete=models.CASCADE, null=True, blank=True)  # Make teacher nullable
+    teacher = models.ForeignKey(Teacher, on_delete=models.CASCADE, null=True, blank=True)
+    type = models.CharField(max_length=7, choices=ASSIGNMENT_TYPES, default='Lecture')  # New field to specify Lecture or Lab
 
     class Meta:
-        unique_together = ('course', 'class_assigned')
+        unique_together = ('course', 'class_assigned', 'type')
 
     def __str__(self):
-        return f'{self.class_assigned.name} - {self.course.short_name} - {self.teacher.name if self.teacher else "No Teacher"}'
-
+        return f'{self.class_assigned.name} - {self.course.short_name} - {self.type} - {self.teacher.name if self.teacher else "No Teacher"}'
+        
 class Schedule(models.Model):
     day = models.ForeignKey(Day, on_delete=models.CASCADE)
     room = models.ForeignKey(Room, on_delete=models.CASCADE)

@@ -65,7 +65,11 @@
                                     <div class="schedule-info">
                                         <strong>{{ schedule.course_assignment.class_assigned.name }} {{ schedule.course_assignment.class_assigned.semester.name }}{{ schedule.course_assignment.class_assigned.section }}</strong><br>
                                         {{ schedule.course_assignment.course.short_name }}<br>
-                                        {{ schedule.course_assignment.teacher.name|default:"No Teacher" }}
+                                        {% if schedule.course_assignment.type == 'Lab' %}
+                                            LAB
+                                        {% else %}
+                                            {{ schedule.course_assignment.teacher.name|default:"No Teacher" }}
+                                        {% endif %}
                                     </div>
                                 {% endif %}
                             {% endfor %}

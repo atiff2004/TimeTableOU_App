@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from .forms import CourseForm, ClassForm, AddShiftForm, ScheduleForm, CourseOfferingForm, TeacherForm, addday, addroom, addslot, CourseAssignmentForm, DepartmentForm, TeacherAssignmentForm
+from .forms import CourseForm, ClassForm,LabScheduleForm, AddShiftForm, ScheduleForm, CourseOfferingForm, TeacherForm, addday, addroom, addslot, CourseAssignmentForm, DepartmentForm, TeacherAssignmentForm
 from .models import Room, Timeslot,Shift, Day, Schedule, Class, Teacher, Course, CourseAssignment, Department,  CourseOffering, Semester
 from django.http import JsonResponse, HttpResponse
 import openpyxl
@@ -94,7 +94,10 @@ def assign_course_to_class(request):
             return redirect('assign_teacher_to_course')
 
     return render(request, 'timetable/assign_course_to_class.html', {'form': form})
-
+def load_lab_courses(request):
+    class_id = request.GET.get('class_id')
+    lab_courses = CourseAssignment.objects.filter(class_assigned_id=class_id, type='Lab').values('id', 'course__full_name')
+    return JsonResponse(list(lab_courses), safe=False)
 
 def load_classes_and_courses(request):
     department_id = request.GET.get('department')
@@ -145,21 +148,49 @@ def assign_teacher_to_course(request):
         form = TeacherAssignmentForm(request.POST)
         if form.is_valid():
             selected_course_assignments = form.cleaned_data['course_assignment']
-            teacher = form.cleaned_data['teacher']
+            assignment_type = form.cleaned_data['assignment_type']
+            teacher = form.cleaned_data['teacher'] if assignment_type == 'Lecture' else None
 
             for course_assignment in selected_course_assignments:
-                course_assignment.teacher = teacher
-                course_assignment.save()
+                if assignment_type == 'Lab':
+                    # Fetch the teacher from the Lecture assignment of the same course
+                    lecture_assignment = CourseAssignment.objects.filter(
+                        class_assigned=course_assignment.class_assigned,
+                        course=course_assignment.course,
+                        type='Lecture'
+                    ).first()
 
-            # Success message after creation
+                    if lecture_assignment and lecture_assignment.teacher:
+                        teacher = lecture_assignment.teacher  # Automatically set teacher to the one from the lecture
+                    else:
+                        # Error message if no lecture assignment with teacher is found
+                        form.add_error(None, f"No lecture assignment with a teacher found for course {course_assignment.course.short_name}.")
+                        return render(request, 'timetable/assign_teacher_to_course.html', {'form': form})
+
+                    # Create a new CourseAssignment entry for Lab with the fetched teacher
+                    CourseAssignment.objects.create(
+                        class_assigned=course_assignment.class_assigned,
+                        course=course_assignment.course,
+                        teacher=teacher,
+                        type='Lab'
+                    )
+                else:
+                    # Assign teacher for Lecture type
+                    course_assignment.teacher = teacher
+                    course_assignment.type = 'Lecture'
+                    course_assignment.save()
+
+            # Success message
             return render(request, 'timetable/assign_teacher_to_course.html', {
                 'form': form,
-                'success_message': "Successfully assigned teacher to selected course assignments."
+                'success_message': "Successfully assigned teacher or LAB to selected course assignments."
             })
     else:
         form = TeacherAssignmentForm()
 
     return render(request, 'timetable/assign_teacher_to_course.html', {'form': form})
+
+
 
 
 def load_course_class_pairs(request):
@@ -435,7 +466,8 @@ def class_timetable_view(request, class_id):
                     slot_data.append({
                         'room_name': schedule.room.name,
                         'course_name': schedule.course_assignment.course.short_name,  # Use short name
-                        'teacher_name': schedule.course_assignment.teacher.name if schedule.course_assignment.teacher else 'TBA'
+                        'teacher_name': schedule.course_assignment.teacher.name if schedule.course_assignment.teacher else 'TBA',
+                        'course_type': 'Lab' if schedule.course_assignment.type == 'Lab' else 'Lecture'  # Check course type
                     })
                 day_row['slots'].append(slot_data)
             else:
@@ -450,6 +482,7 @@ def class_timetable_view(request, class_id):
         'selected_department_id': selected_department_id,  # Add the selected department
     }
     return render(request, 'timetable/class_timetable.html', context)
+
 
 
 def teacher_timetable_selection_view(request):
@@ -474,9 +507,13 @@ def teacher_timetable_view(request, teacher_id):
             if schedules.exists():
                 schedule_info = []
                 for schedule in schedules:
+                    course_name = schedule.course_assignment.course.short_name
+                    # Append "LAB" to course name if type is Lab
+                    if schedule.course_assignment.type == 'Lab':
+                        course_name += " LAB"
                     schedule_info.append({
                         'room_name': schedule.room.name,
-                        'course_name': schedule.course_assignment.course.short_name if schedule.course_assignment.course else 'N/A',
+                        'course_name': course_name,
                         'class_name': f"{schedule.course_assignment.class_assigned.name} {schedule.course_assignment.class_assigned.semester.name}{schedule.course_assignment.class_assigned.section}"
                     })
                 day_row['slots'].append(schedule_info)
@@ -2215,11 +2252,13 @@ def all_days_timetable_pdf_view(request):
                             f"{schedule.course_assignment.class_assigned.section}"
                         ) if schedule.course_assignment.class_assigned else 'N/A'
                         teacher_name = schedule.course_assignment.teacher.name if schedule.course_assignment.teacher else 'N/A'
+                        teacher_phone_number = schedule.course_assignment.teacher.phone_number if schedule.course_assignment.teacher else 'N/A'
 
                         slot_data.append({
                             'course_name': course_name,
                             'class_name': class_name,
-                            'teacher_name': teacher_name
+                            'teacher_name': teacher_name,
+                            'teacher_phone_number': teacher_phone_number
                         })
                 # Append either the slot data or an empty list (for an empty slot)
                 room_row['slots'].append({'timeslot': timeslot, 'data': slot_data})
@@ -2234,3 +2273,256 @@ def all_days_timetable_pdf_view(request):
     }
 
     return generate_pdf_days('timetable/all_days_timetable_pdf.html', context)
+
+def download_data(request):
+    with pd.ExcelWriter('database_export.xlsx', engine='xlsxwriter') as writer:
+        # Export Department, Semester, Shift
+        department_df = pd.DataFrame(list(Department.objects.values('name')))
+        department_df.to_excel(writer, sheet_name='Department', index=False)
+
+        semester_df = pd.DataFrame(list(Semester.objects.values('name')))
+        semester_df.to_excel(writer, sheet_name='Semester', index=False)
+
+        shift_df = pd.DataFrame(list(Shift.objects.values('name')))
+        shift_df.to_excel(writer, sheet_name='Shift', index=False)
+
+        # Export Class with related fields as names
+        class_data = Class.objects.select_related('department', 'semester', 'shift').values(
+            'name', 'section',
+            'department__name', 'semester__name', 'shift__name'
+        )
+        class_df = pd.DataFrame(class_data)
+        class_df.columns = ['name', 'section', 'department', 'semester', 'shift']
+        class_df.to_excel(writer, sheet_name='Class', index=False)
+
+        # Export Course
+        course_df = pd.DataFrame(list(Course.objects.values(
+            'course_code', 'short_name', 'full_name', 'credit_hours', 'lab_crh', 'pre_req', 'category'
+        )))
+        course_df.to_excel(writer, sheet_name='Course', index=False)
+
+        # Export CourseOffering with related fields as names
+        course_offering_data = CourseOffering.objects.select_related('course', 'department', 'semester').values(
+            'course__short_name', 'department__name', 'semester__name', 'year'
+        )
+        course_offering_df = pd.DataFrame(course_offering_data)
+        course_offering_df.columns = ['course', 'department', 'semester', 'year']
+        course_offering_df.to_excel(writer, sheet_name='CourseOffering', index=False)
+
+        # Export Teacher
+        teacher_df = pd.DataFrame(list(Teacher.objects.values('name', 'phone_number', 'gmail')))
+        teacher_df.to_excel(writer, sheet_name='Teacher', index=False)
+
+        # Export Room
+        room_df = pd.DataFrame(list(Room.objects.values('name')))
+        room_df.to_excel(writer, sheet_name='Room', index=False)
+
+        # Export Timeslot with related fields as names
+        timeslot_data = Timeslot.objects.select_related('shift').values(
+            'slot', 'category', 'shift__name'
+        )
+        timeslot_df = pd.DataFrame(timeslot_data)
+        timeslot_df.columns = ['slot', 'category', 'shift']
+        timeslot_df.to_excel(writer, sheet_name='Timeslot', index=False)
+
+        # Export Day
+        day_df = pd.DataFrame(list(Day.objects.values('name')))
+        day_df.to_excel(writer, sheet_name='Day', index=False)
+
+        # Export CourseAssignment with related fields as names
+        course_assignment_data = CourseAssignment.objects.select_related('class_assigned', 'course', 'teacher').values(
+            'class_assigned__name', 'course__short_name', 'teacher__name'
+        )
+        course_assignment_df = pd.DataFrame(course_assignment_data)
+        course_assignment_df.columns = ['class_assigned', 'course', 'teacher']
+        course_assignment_df.to_excel(writer, sheet_name='CourseAssignment', index=False)
+
+        # Export Schedule with related fields as names
+        schedule_data = Schedule.objects.select_related('day', 'room', 'timeslot', 'course_assignment').values(
+            'day__name', 'room__name', 'timeslot__slot', 'course_assignment__course__short_name'
+        )
+        schedule_df = pd.DataFrame(schedule_data)
+        schedule_df.columns = ['day', 'room', 'timeslot', 'course_assignment']
+        schedule_df.to_excel(writer, sheet_name='Schedule', index=False)
+
+        # Export NewTimeslot with related fields as names
+        new_timeslot_data = NewTimeslot.objects.select_related('shift').values(
+            'slot', 'start_time', 'end_time', 'shift__name'
+        )
+        new_timeslot_df = pd.DataFrame(new_timeslot_data)
+        new_timeslot_df.columns = ['slot', 'start_time', 'end_time', 'shift']
+        new_timeslot_df.to_excel(writer, sheet_name='NewTimeslot', index=False)
+
+    # Prepare response
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename="database_export.xlsx"'
+    with open('database_export.xlsx', 'rb') as f:
+        response.write(f.read())
+
+    return response
+
+import pandas as pd
+from django.shortcuts import render
+from django.db import transaction, IntegrityError
+from .models import Department, Semester, Shift, Class, Course, CourseOffering, Teacher, Room, Timeslot, Day, CourseAssignment, Schedule, NewTimeslot
+
+def upload_data(request):
+    if request.method == 'POST' and request.FILES.get('file'):
+        file = request.FILES['file']
+        try:
+            with pd.ExcelFile(file) as xls:
+                with transaction.atomic():
+                    # Read each sheet and handle missing 'id' columns by assigning new IDs where needed
+                    if 'Department' in xls.sheet_names:
+                        department_df = pd.read_excel(xls, 'Department')
+                        if 'id' not in department_df.columns:
+                            department_df = department_df.drop(columns=['id'], errors='ignore')
+                        Department.objects.bulk_create([Department(**row) for row in department_df.to_dict(orient='records')], ignore_conflicts=True)
+
+                    if 'Semester' in xls.sheet_names:
+                        semester_df = pd.read_excel(xls, 'Semester')
+                        if 'id' not in semester_df.columns:
+                            semester_df = semester_df.drop(columns=['id'], errors='ignore')
+                        Semester.objects.bulk_create([Semester(**row) for row in semester_df.to_dict(orient='records')], ignore_conflicts=True)
+
+                    if 'Shift' in xls.sheet_names:
+                        shift_df = pd.read_excel(xls, 'Shift')
+                        if 'id' not in shift_df.columns:
+                            shift_df = shift_df.drop(columns=['id'], errors='ignore')
+                        Shift.objects.bulk_create([Shift(**row) for row in shift_df.to_dict(orient='records')], ignore_conflicts=True)
+
+                    if 'Class' in xls.sheet_names:
+                        class_df = pd.read_excel(xls, 'Class')
+                        if 'id' not in class_df.columns:
+                            class_df = class_df.drop(columns=['id'], errors='ignore')
+                        Class.objects.bulk_create([Class(**row) for row in class_df.to_dict(orient='records')], ignore_conflicts=True)
+
+                    if 'Course' in xls.sheet_names:
+                        course_df = pd.read_excel(xls, 'Course')
+                        if 'id' not in course_df.columns:
+                            course_df = course_df.drop(columns=['id'], errors='ignore')
+                        Course.objects.bulk_create([Course(**row) for row in course_df.to_dict(orient='records')], ignore_conflicts=True)
+
+                    if 'CourseOffering' in xls.sheet_names:
+                        course_offering_df = pd.read_excel(xls, 'CourseOffering')
+                        if 'id' not in course_offering_df.columns:
+                            course_offering_df = course_offering_df.drop(columns=['id'], errors='ignore')
+                        CourseOffering.objects.bulk_create([CourseOffering(**row) for row in course_offering_df.to_dict(orient='records')], ignore_conflicts=True)
+
+                    if 'Teacher' in xls.sheet_names:
+                        teacher_df = pd.read_excel(xls, 'Teacher')
+                        if 'id' not in teacher_df.columns:
+                            teacher_df = teacher_df.drop(columns=['id'], errors='ignore')
+                        Teacher.objects.bulk_create([Teacher(**row) for row in teacher_df.to_dict(orient='records')], ignore_conflicts=True)
+
+                    if 'Room' in xls.sheet_names:
+                        room_df = pd.read_excel(xls, 'Room')
+                        if 'id' not in room_df.columns:
+                            room_df = room_df.drop(columns=['id'], errors='ignore')
+                        Room.objects.bulk_create([Room(**row) for row in room_df.to_dict(orient='records')], ignore_conflicts=True)
+
+                    if 'Timeslot' in xls.sheet_names:
+                        timeslot_df = pd.read_excel(xls, 'Timeslot')
+                        if 'id' not in timeslot_df.columns:
+                            timeslot_df = timeslot_df.drop(columns=['id'], errors='ignore')
+                        Timeslot.objects.bulk_create([Timeslot(**row) for row in timeslot_df.to_dict(orient='records')], ignore_conflicts=True)
+
+                    if 'Day' in xls.sheet_names:
+                        day_df = pd.read_excel(xls, 'Day')
+                        if 'id' not in day_df.columns:
+                            day_df = day_df.drop(columns=['id'], errors='ignore')
+                        Day.objects.bulk_create([Day(**row) for row in day_df.to_dict(orient='records')], ignore_conflicts=True)
+
+                    if 'CourseAssignment' in xls.sheet_names:
+                        course_assignment_df = pd.read_excel(xls, 'CourseAssignment')
+                        if 'id' not in course_assignment_df.columns:
+                            course_assignment_df = course_assignment_df.drop(columns=['id'], errors='ignore')
+                        CourseAssignment.objects.bulk_create([CourseAssignment(**row) for row in course_assignment_df.to_dict(orient='records')], ignore_conflicts=True)
+
+                    if 'Schedule' in xls.sheet_names:
+                        schedule_df = pd.read_excel(xls, 'Schedule')
+                        if 'id' not in schedule_df.columns:
+                            schedule_df = schedule_df.drop(columns=['id'], errors='ignore')
+                        Schedule.objects.bulk_create([Schedule(**row) for row in schedule_df.to_dict(orient='records')], ignore_conflicts=True)
+
+                    if 'NewTimeslot' in xls.sheet_names:
+                        new_timeslot_df = pd.read_excel(xls, 'NewTimeslot')
+                        if 'id' not in new_timeslot_df.columns:
+                            new_timeslot_df = new_timeslot_df.drop(columns=['id'], errors='ignore')
+                        NewTimeslot.objects.bulk_create([NewTimeslot(**row) for row in new_timeslot_df.to_dict(orient='records')], ignore_conflicts=True)
+
+            success_message = "Data uploaded successfully."
+            return render(request, 'timetable/upload_data.html', {'success_message': success_message})
+
+        except IntegrityError as e:
+            error_message = f"Error uploading data: {str(e)}"
+            return render(request, 'timetable/upload_data.html', {'error_message': error_message})
+
+    return render(request, 'timetable/upload_data.html')
+from django.shortcuts import render
+from .models import Schedule, CourseAssignment, Day, Room, Timeslot
+from django.db.models import Count
+
+def assign_lab_schedule(request):
+    departments = Department.objects.all()
+    semesters = Semester.objects.all()
+
+    if request.method == 'POST':
+        department_id = request.POST.get('department')
+        semester_id = request.POST.get('semester')
+        class_id = request.POST.get('class_select')
+        course_assignment_id = request.POST.get('course_assignment')
+
+        # Initialize the form with POST data and extra arguments
+        form = ScheduleForm(request.POST, department_id=department_id, semester_id=semester_id, class_id=class_id)
+
+        if form.is_valid():
+            day = form.cleaned_data['day']
+            room = form.cleaned_data['room']
+            timeslot = form.cleaned_data['timeslot']
+            class_assigned = form.cleaned_data['class_select']
+
+            try:
+                # Retrieve CourseAssignment object with type "Lab" using the provided ID
+                course_assign = CourseAssignment.objects.get(id=course_assignment_id, type='Lab')
+            except CourseAssignment.DoesNotExist:
+                form.add_error(None, "Selected lab course assignment does not exist.")
+                return render(request, 'timetable/assign_lab_schedule.html', {
+                    'form': form,
+                    'departments': departments,
+                    'semesters': semesters
+                })
+
+            # Check constraints similar to assign_schedule
+            if course_assign.teacher:
+                if Schedule.objects.filter(day=day, timeslot=timeslot, course_assignment__teacher=course_assign.teacher).exists():
+                    form.add_error(None, f"{course_assign.teacher} is already assigned to another course at this time.")
+                    return render(request, 'timetable/assign_lab_schedule.html', {
+                        'form': form,
+                        'departments': departments,
+                        'semesters': semesters
+                    })
+
+            # Check room, class, and shift constraints
+            shift = class_assigned.shift
+            if Schedule.objects.filter(day=day, room=room, timeslot=timeslot).exists():
+                form.add_error(None, "This room is already booked for the selected timeslot.")
+            elif Schedule.objects.filter(day=day, timeslot=timeslot, course_assignment__class_assigned=course_assign.class_assigned).exists():
+                form.add_error(None, "This class is already assigned to a different room at this time.")
+            elif shift.name == 'M' and timeslot.shift.name != 'M':
+                form.add_error(None, "This class is assigned to the morning shift, so it can only be scheduled in morning timeslots.")
+            elif shift.name == 'E' and timeslot.shift.name != 'E':
+                form.add_error(None, "This class is assigned to the evening shift, so it can only be scheduled in evening timeslots.")
+            else:
+                # Schedule if all constraints are met
+                Schedule.objects.create(day=day, room=room, timeslot=timeslot, course_assignment=course_assign)
+                return redirect('timetable')
+
+    else:
+        form = ScheduleForm()
+
+    return render(request, 'timetable/assign_lab_schedule.html', {
+        'form': form,
+        'departments': departments,
+        'semesters': semesters
+    })

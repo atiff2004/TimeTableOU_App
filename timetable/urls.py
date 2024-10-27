@@ -14,6 +14,10 @@ urlpatterns = [
     # URL for deleting Days, Rooms, and Timeslots
     path('manage_data/', views.manage_days_rooms_timeslots, name='manage_data'),
     path('export_excel/', views.export_excel, name='export_excel'),
+    path('download-data/', views.download_data, name='download_data'),
+    path('upload-data/', views.upload_data, name='upload_data'),
+    path('assign-lab-schedule/', views.assign_lab_schedule, name='assign_lab_schedule'),
+
     path('all-classes-timetable-pdf/', views.all_classes_timetable_pdf_view, name='all_classes_timetable_pdf'),
     path('all-days-timetable-pdf/', views.all_days_timetable_pdf_view, name='all_days_timetable_pdf'),
 
@@ -38,6 +42,7 @@ urlpatterns = [
     path('assign-schedule/', views.assign_schedule, name='assign_schedule'),
     # path('load-classes/', views.load_classes_by_department_and_semester, name='load_classes_by_department_and_semester'),
     path('load-classes/', views.load_classes, name='load_classes'),
+    path('load-lab-courses/', views.load_lab_courses, name='load_lab_courses'),
     path('load-course-assignments/', views.load_course_assignments, name='load_course_assignments'),
     path('get-class-list/', views.get_class_list, name='get_class_list'),
     path('filter_classes/', views.filter_classes, name='filter_classes'),

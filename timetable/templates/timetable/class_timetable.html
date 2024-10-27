@@ -63,7 +63,11 @@
                             <div class="schedule-info">
                                 <strong>{{ entry.room_name }}</strong><br>
                                 {{ entry.course_name }} <br>
-                                {{ entry.teacher_name }}
+                                {% if entry.course_type == "Lab" %}
+                            <strong>LAB</strong>
+                                {% else %}
+                                    {{ entry.teacher_name }}
+                                {% endif %}
                             </div>
                         {% endfor %}
                     {% else %}

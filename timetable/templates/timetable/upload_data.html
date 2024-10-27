@@ -1,0 +1,29 @@
+{% extends "timetable/base.html" %}
+{% block content %}
+<h1 class="my-4 text-center">Download & Upload Data</h1>
+
+<div class="container">
+    <!-- Download Button -->
+    <form method="get" action="{% url 'download_data' %}">
+        <button type="submit" class="btn btn-success my-3">Download All Data</button>
+    </form>
+
+    <!-- Upload Section -->
+      
+    <form method="POST" enctype="multipart/form-data">
+        {% csrf_token %}
+        <label for="excel_file">Select Excel File:</label>
+        <input type="file" name="excel_file" required>
+        <button type="submit">Upload Data</button>
+    </form>
+    
+    {% if messages %}
+        <ul class="messages">
+            {% for message in messages %}
+                <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+    
+</div>
+{% endblock %}
