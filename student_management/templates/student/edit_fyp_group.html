@@ -1,0 +1,197 @@
+{% extends 'timetable/base.html' %}
+
+{% block content %}
+<h2 class="text-center mb-4">Manage FYP Group</h2>
+
+<!-- Filter Selection -->
+<div class="container mb-4">
+    <div class="row">
+        <div class="col-md-4">
+            <label for="department" class="form-label">Select Department:</label>
+            <select id="department" name="department" class="form-select">
+                <option value="">-- Select Department --</option>
+                {% for department in departments %}
+                    <option value="{{ department.id }}">{{ department.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label for="semester" class="form-label">Select Semester:</label>
+            <select id="semester" name="semester" class="form-select" disabled>
+                <option value="">-- Select Semester --</option>
+                {% for semester in semesters %}
+                    <option value="{{ semester.id }}">{{ semester.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label for="class" class="form-label">Select Class:</label>
+            <select id="class" name="class" class="form-select" disabled>
+                <option value="">-- Select Class --</option>
+            </select>
+        </div>
+    </div>
+</div>
+
+<!-- Group Selection -->
+<div class="container mb-4">
+    <label for="group" class="form-label">Select Group:</label>
+    <select id="group" name="group" class="form-select">
+        <option value="">-- Select Group --</option>
+        {% for fyp in fyps %}
+            <option value="{{ fyp.id }}">{{ fyp.group_name }}</option>
+        {% endfor %}
+    </select>
+</div>
+
+<!-- Action Selection -->
+{% if selected_group %}
+    <div class="container mb-4">
+        <a href="?class_id={{ selected_class.id }}&fyp_id={{ selected_group.id }}&action=submit" class="btn btn-success me-2">Submit</a>
+        <a href="?class_id={{ selected_class.id }}&fyp_id={{ selected_group.id }}&action=edit" class="btn btn-primary">Edit Group</a>
+    </div>
+{% endif %}
+
+<!-- Form for Submission Only -->
+{% if request.GET.action == 'submit' and selected_group %}
+    <form method="post" class="p-4 shadow-sm bg-light rounded">
+        {% csrf_token %}
+        <h4 class="text-center mb-3">Submit FYP Group: {{ selected_group.group_name }}</h4>
+
+        <!-- Submission Date and Status -->
+        <div class="mb-3">
+            <label class="form-label">Deadline:</label>
+            <input type="text" value="{{ selected_group.deadline }}" readonly class="form-control">
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Submission Date:</label>
+            <input type="date" name="submission_date" value="{{ selected_group.submission_date|date:"Y-m-d" }}" class="form-control">
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Status:</label>
+            <select name="status" class="form-select">
+                <option value="Pending" {% if selected_group.status == "Pending" %}selected{% endif %}>Pending</option>
+                <option value="Approved" {% if selected_group.status == "Approved" %}selected{% endif %}>Approved</option>
+            </select>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Save Submission</button>
+    </form>
+{% endif %}
+
+<!-- Full Edit Form -->
+{% if request.GET.action == 'edit' and form %}
+    <form method="post" class="p-4 shadow-sm bg-light rounded">
+        {% csrf_token %}
+        
+        <h4 class="text-center mb-3">Edit FYP Group: {{ selected_group.group_name }}</h4>
+
+        <!-- Read-only Group Details -->
+        <div class="mb-3">
+            <label class="form-label">Group Name:</label>
+            <p class="form-control-plaintext">{{ selected_group.group_name }}</p>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Project Title:</label>
+            {{ form.title }}
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Supervisor:</label>
+            {{ form.supervisor }}
+        </div>
+
+        <!-- Read-only Group Members -->
+        <div class="mb-3">
+            <label class="form-label">Group Members:</label>
+            <ul>
+                {% for member in group_members %}
+                    <li>{{ member.name }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Deadline:</label>
+            {{ form.deadline }}
+        </div>
+
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+        <a href="{% url 'swap_group_members' %}" class="btn btn-secondary">Swap Group Members</a>
+    </form>
+{% endif %}
+
+<div id="loading-indicator" style="display: none;">Loading...</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script type="text/javascript">
+    document.addEventListener('DOMContentLoaded', function() {
+        const departmentSelect = document.getElementById('department');
+        const semesterSelect = document.getElementById('semester');
+        const classSelect = document.getElementById('class');
+        const groupSelect = document.getElementById('group');
+        const loadingIndicator = document.getElementById('loading-indicator');
+
+        departmentSelect.addEventListener('change', function () {
+            semesterSelect.disabled = !departmentSelect.value;
+            classSelect.innerHTML = '<option value="">-- Select Class --</option>';
+            classSelect.disabled = true;
+        });
+
+        semesterSelect.addEventListener('change', function () {
+            if (departmentSelect.value && semesterSelect.value) {
+                loadClasses();
+            }
+        });
+
+        classSelect.addEventListener('change', function () {
+            if (classSelect.value) {
+                window.location.href = `/edit-fyp-group/?class_id=${classSelect.value}`;
+            }
+        });
+
+        groupSelect.addEventListener('change', function () {
+            if (groupSelect.value) {
+                window.location.href = `/edit-fyp-group/?class_id=${classSelect.value}&fyp_id=${groupSelect.value}`;
+            }
+        });
+
+        function loadClasses() {
+            const departmentId = departmentSelect.value;
+            const semesterId = semesterSelect.value;
+
+            if (departmentId && semesterId) {
+                loadingIndicator.style.display = 'block';
+
+                fetch(`/load-class/?department_id=${departmentId}&semester_id=${semesterId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        classSelect.innerHTML = '<option value="">-- Select Class --</option>';
+                        if (data.classes && data.classes.length > 0) {
+                            classSelect.disabled = false;
+                            data.classes.forEach(classObj => {
+                                const option = document.createElement('option');
+                                option.value = classObj.id;
+                                option.text = `${classObj.name} (${classObj.section})`;
+                                classSelect.appendChild(option);
+                            });
+                        } else {
+                            classSelect.innerHTML = '<option value="">No classes available</option>';
+                            classSelect.disabled = true;
+                        }
+                        loadingIndicator.style.display = 'none';
+                    })
+                    .catch(error => {
+                        console.error("Error fetching classes:", error);
+                        classSelect.innerHTML = '<option value="">Error loading classes</option>';
+                        classSelect.disabled = true;
+                        loadingIndicator.style.display = 'none';
+                    });
+            }
+        }
+    });
+</script>
+{% endblock %}

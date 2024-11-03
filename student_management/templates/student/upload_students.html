@@ -1,0 +1,11 @@
+<h2>Upload Student Data</h2>
+{% if messages %}
+    {% for message in messages %}
+        <p>{{ message }}</p>
+    {% endfor %}
+{% endif %}
+<form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    <input type="file" name="file" accept=".xlsx,.xls">
+    <button type="submit">Upload</button>
+</form>

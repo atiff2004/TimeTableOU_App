@@ -1,0 +1,154 @@
+{% extends 'timetable/base.html' %}
+
+{% block content %}
+<h2 class="text-center mb-4">Swap Group Members</h2>
+
+<!-- Filter Selection for Class -->
+<div class="container mb-4">
+    <div class="row">
+        <div class="col-md-4">
+            <label for="department" class="form-label">Select Department:</label>
+            <select id="department" name="department" class="form-select">
+                <option value="">-- Select Department --</option>
+                {% for department in departments %}
+                    <option value="{{ department.id }}">{{ department.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label for="semester" class="form-label">Select Semester:</label>
+            <select id="semester" name="semester" class="form-select" disabled>
+                <option value="">-- Select Semester --</option>
+                {% for semester in semesters %}
+                    <option value="{{ semester.id }}">{{ semester.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label for="class" class="form-label">Select Class:</label>
+            <select id="class" name="class" class="form-select" disabled>
+                <option value="">-- Select Class --</option>
+            </select>
+        </div>
+    </div>
+</div>
+
+<!-- Group Selection for Swapping -->
+{% if selected_class %}
+    <div class="container mb-4">
+        <label for="group_x" class="form-label">Select Group X:</label>
+        <select id="group_x" name="group_x" class="form-select">
+            <option value="">-- Select Group X --</option>
+            {% for fyp in fyps %}
+                <option value="{{ fyp.id }}" {% if fyp == group_x %}selected{% endif %}>{{ fyp.group_name }}</option>
+            {% endfor %}
+        </select>
+
+        <label for="group_y" class="form-label">Select Group Y:</label>
+        <select id="group_y" name="group_y" class="form-select">
+            <option value="">-- Select Group Y --</option>
+            {% for fyp in fyps %}
+                <option value="{{ fyp.id }}" {% if fyp == group_y %}selected{% endif %}>{{ fyp.group_name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <!-- Swap Form -->
+    <form method="post">
+        {% csrf_token %}
+
+        <div class="row">
+            <div class="col-md-6">
+                <h4>Group X: {{ group_x.group_name }}</h4>
+                {% for student in students_x %}
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" name="students_x" value="{{ student.id }}" id="student_x_{{ student.id }}">
+                        <label class="form-check-label" for="student_x_{{ student.id }}">{{ student.name }}</label>
+                    </div>
+                {% endfor %}
+            </div>
+
+            <div class="col-md-6">
+                <h4>Group Y: {{ group_y.group_name }}</h4>
+                {% for student in students_y %}
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" name="students_y" value="{{ student.id }}" id="student_y_{{ student.id }}">
+                        <label class="form-check-label" for="student_y_{{ student.id }}">{{ student.name }}</label>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary mt-3">Swap Members</button>
+    </form>
+{% endif %}
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script type="text/javascript">
+    document.addEventListener('DOMContentLoaded', function() {
+        const departmentSelect = document.getElementById('department');
+        const semesterSelect = document.getElementById('semester');
+        const classSelect = document.getElementById('class');
+        const groupXSelect = document.getElementById('group_x');
+        const groupYSelect = document.getElementById('group_y');
+
+        departmentSelect.addEventListener('change', function () {
+            semesterSelect.disabled = !departmentSelect.value;
+        });
+
+        semesterSelect.addEventListener('change', function () {
+            if (departmentSelect.value && semesterSelect.value) {
+                loadClasses();
+            }
+        });
+
+        classSelect.addEventListener('change', function () {
+            if (classSelect.value) {
+                window.location.href = `/swap-group-members/?class_id=${classSelect.value}`;
+            }
+        });
+
+        groupXSelect.addEventListener('change', function () {
+            if (groupXSelect.value && groupYSelect.value) {
+                window.location.href = `/swap-group-members/?class_id=${classSelect.value}&group_x_id=${groupXSelect.value}&group_y_id=${groupYSelect.value}`;
+            }
+        });
+
+        groupYSelect.addEventListener('change', function () {
+            if (groupXSelect.value && groupYSelect.value) {
+                window.location.href = `/swap-group-members/?class_id=${classSelect.value}&group_x_id=${groupXSelect.value}&group_y_id=${groupYSelect.value}`;
+            }
+        });
+
+        function loadClasses() {
+            const departmentId = departmentSelect.value;
+            const semesterId = semesterSelect.value;
+
+            if (departmentId && semesterId) {
+                fetch(`/load-class/?department_id=${departmentId}&semester_id=${semesterId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        classSelect.innerHTML = '<option value="">-- Select Class --</option>';
+                        if (data.classes && data.classes.length > 0) {
+                            classSelect.disabled = false;
+                            data.classes.forEach(classObj => {
+                                const option = document.createElement('option');
+                                option.value = classObj.id;
+                                option.text = `${classObj.name} (${classObj.section})`;
+                                classSelect.appendChild(option);
+                            });
+                        } else {
+                            classSelect.innerHTML = '<option value="">No classes available</option>';
+                            classSelect.disabled = true;
+                        }
+                    })
+                    .catch(error => {
+                        console.error("Error fetching classes:", error);
+                        classSelect.innerHTML = '<option value="">Error loading classes</option>';
+                        classSelect.disabled = true;
+                    });
+            }
+        }
+    });
+</script>
+{% endblock %}

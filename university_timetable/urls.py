@@ -21,5 +21,5 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('select2/', include('django_select2.urls')),
     path('', include('timetable.urls')),  # Include the URLs from the 'timetable' app
+    path('', include('student_management.urls')), # Include the URLs from the 'timetable' app
 ]
-
